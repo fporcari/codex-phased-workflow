@@ -81,7 +81,7 @@ of truth.
 ## Install
 
 ```bash
-codex plugin marketplace add /absolute/path/to/codex-phased-workflow-repo
+codex plugin marketplace add fporcari/codex-phased-workflow
 codex plugin add codex-phased-workflow@codex-phased-workflow
 ```
 
