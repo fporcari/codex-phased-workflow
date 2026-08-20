@@ -7,7 +7,7 @@ The fork already asked whether the plan targets autonomous execution — do not 
 ## Per-phase refinement
 
 1. **Pattern reference.** For non-trivial code, find 1–2 existing examples and propose them: *"For Phase X I follow the pattern of `path/to/example.py:func`. Confirm?"* No clean candidate → ask the user; still nothing → propose 2–3 based on the phase description; still nothing → the phase is `new-pattern (flagged: higher risk)` and the user is told it is riskier autonomously. Library-standard work needs no reference.
-2. **Scope safety.** Sub-sessions run in Codex `workspace-write` with approval review; the autonomous boundary is listed in `<PLUGIN_ROOT>/refs/auto-mode-scope.md`. A phase needing something outside it must surface the action and offer: stop before it, drop it, or run that phase interactively. Never silently rewrite a phase to hide it.
+2. **Scope safety.** Sub-sessions run in Codex `workspace-write` without automatic escalation approval; the autonomous boundary is listed in `<PLUGIN_ROOT>/refs/auto-mode-scope.md`. A phase needing something outside it must surface the action and offer: stop before it, drop it, or run that phase interactively. Never silently rewrite a phase to hide it.
 3. **Pre-make every external decision** (library, naming, signature, API shape, trade-offs) and record it in `Decisions:`.
 4. **Bound the scope**: concrete paths in `Files:`, or an explicit discovery rule.
 5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/execute-phase-agent` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.

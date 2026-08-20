@@ -76,6 +76,8 @@ class ProtocolCompatibilityTest(unittest.TestCase):
 
                 arguments = sys.argv[1:]
                 assert "gpt-5.6-sol" in arguments
+                assert "-s" in arguments and "workspace-write" in arguments
+                assert "--approve-for-me" not in arguments
                 checkout = Path(arguments[arguments.index("-C") + 1])
                 prompt = arguments[-1]
                 number = re.search(r"Phase (\\d+)", prompt).group(1)
@@ -109,6 +111,13 @@ class ProtocolCompatibilityTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("EVENT: run-end:done", result.stdout)
             self.assertIn("- [x] **Phase 1**", (plan_directory / "plan.md").read_text())
+
+    def test_worker_launchers_never_auto_approve_escalations(self) -> None:
+        for script_name in ("run-workflow.sh", "agent-session.sh"):
+            with self.subTest(script=script_name):
+                script = (PLUGIN / "scripts" / script_name).read_text()
+                self.assertIn("-s workspace-write", script)
+                self.assertNotIn("--approve-for-me", script)
 
 
 if __name__ == "__main__":

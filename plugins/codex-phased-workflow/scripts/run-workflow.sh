@@ -60,7 +60,7 @@ run_codex() {
   codex exec --ephemeral -C "$checkout" \
     -m "$phase_model" \
     -c "model_reasoning_effort=$effort" \
-    -s workspace-write --approve-for-me \
+    -s workspace-write \
     "$prompt" 2>&1 | tee "$log_file"
   return "${PIPESTATUS[0]}"
 }

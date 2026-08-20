@@ -22,5 +22,5 @@ prompt="Use the $skill_name skill at $skill_file on the active portable plan at 
 codex exec --ephemeral -C "$checkout" \
   -m "${CODEX_REVIEW_MODEL:-gpt-5.6-sol}" \
   -c model_reasoning_effort=high \
-  -s workspace-write --approve-for-me \
+  -s workspace-write \
   "$prompt" 2>&1 | tee "$log_dir/$skill_name.txt"

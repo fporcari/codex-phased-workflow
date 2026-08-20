@@ -22,7 +22,7 @@ drops below Sol.
 2. Require `Mode: autonomous`. An interactive plan must be refined first.
 3. Read every phase. Reject unresolved decisions, non-measurable `Done:`, and
    destructive or externally consequential actions that cannot safely run under
-   Codex `workspace-write` plus `--approve-for-me`.
+   Codex `workspace-write` without an escalation.
 4. Preserve the compatibility model labels in the plan. `opus` and `fable` are
    portable protocol vocabulary shared with Claude; Codex maps both, plus any
    legacy `sonnet`, to `gpt-5.6-sol`. Effort remains `low|medium|high|xhigh|max`.

@@ -4,9 +4,9 @@ Read by the two skills that decide whether a phase can run unattended:
 `/run-workflow` (pre-flight) and `/write-workflow` on the autonomous branch
 (`write-workflow-autonomous.md`). No other skill needs it.
 
-Sub-sessions launch with `codex exec --sandbox workspace-write --approve-for-me`.
-Codex's approval reviewer judges escalations; this plugin ships no hooks or
-exec-policy overrides. The list below is the convention for autonomous phase
+Sub-sessions launch with `codex exec --sandbox workspace-write` and no automatic
+escalation approval. This plugin ships no hooks or exec-policy overrides. An
+operation outside the sandbox stops the worker. The list below is the convention for autonomous phase
 design, not a claim that the plugin can enforce every boundary.
 
 Under that mode, routine local operations in project scope (git

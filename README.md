@@ -59,7 +59,7 @@ flowchart TB
 | Autonomous phase isolation | Fresh `claude -p` session per phase | Fresh ephemeral `codex exec` session per phase | Both start with clean context |
 | Foreman ↔ autonomous worker dialogue | Claude session tools can provide a live return channel when available | Separate `codex exec` processes do not currently expose a portable live channel back to the app task | Codex uses committed markers, notes, logs, and `EVENT:` lines as the authoritative return path |
 | Model selection | Portable `opus`/`fable`; legacy `sonnet` accepted | Every code-writing, repair, and review worker uses `gpt-5.6-sol`; effort varies | Model labels remain unchanged on disk |
-| Autonomous permissions | Claude auto permission mode | Codex `workspace-write` plus `--approve-for-me` | Neither implementation receives blanket external authority |
+| Autonomous permissions | Claude auto permission mode | Codex `workspace-write` with no automatic escalation approval | Out-of-scope operations fail and return to the foreman |
 | Independent judges | Claude agent manifests | Fixed judge prompts dispatched to fresh Codex subagents | Same fresh-eyes review semantics, different packaging |
 | Plugin-relative paths | Claude plugin-root environment | Codex resolves the plugin directory from the loaded skill path | Runtime paths never enter `.phased/` |
 | Notifications | Product/session notification facilities when available | Sparse `EVENT:` output plus task notifications when available | Notification failure never changes workflow state |
@@ -104,7 +104,7 @@ At any point, open the same repository in Claude Code and run its
 
 ## Safety and quality
 
-- Autonomous workers use Codex `workspace-write` with approval review, never a
+- Autonomous workers use Codex `workspace-write` without automatic escalation approval, never a
   sandbox bypass.
 - Code-writing, repair, and review use `gpt-5.6-sol`; only effort varies.
 - External effects such as merges, deploys, publication, and destructive

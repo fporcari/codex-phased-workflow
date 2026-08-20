@@ -262,7 +262,7 @@ Note fields the autonomous chain writes on phases, and what consumes them:
 
 ## Autonomous permission scope
 
-The Codex `workspace-write` plus approval-review boundary, and the convention
+The Codex `workspace-write` boundary without automatic escalation, and the convention
 for writing phases around it, live in
 `<PLUGIN_ROOT>/refs/auto-mode-scope.md` — read it only when deciding
 whether a phase can run unattended (`/run-workflow` pre-flight,
