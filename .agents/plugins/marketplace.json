@@ -1,0 +1,21 @@
+{
+  "name": "codex-phased-workflow",
+  "interface": {
+    "displayName": "Codex Phased Workflow",
+    "description": "Portable phased development workflows for Codex"
+  },
+  "plugins": [
+    {
+      "name": "codex-phased-workflow",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-phased-workflow"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

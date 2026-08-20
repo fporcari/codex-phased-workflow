@@ -1,0 +1,22 @@
+{
+  "name": "codex-phased-workflow",
+  "version": "1.0.0",
+  "description": "A Codex-native phased development workflow with a portable .phased protocol shared with Claude Code.",
+  "author": {
+    "name": "Francesco Porcari"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Phased Workflow",
+    "shortDescription": "Plan, execute, repair, review, and resume portable phased work.",
+    "longDescription": "A strong-model phased workflow for Codex. Plans, markers, notes, branches, and phase commits remain compatible with claude-phased-workflow, so either agent can continue the other's work.",
+    "developerName": "Francesco Porcari",
+    "category": "Productivity",
+    "capabilities": [
+      "Portable .phased plans",
+      "Interactive and autonomous execution",
+      "Fresh-session repair and quality checks"
+    ],
+    "defaultPrompt": "Resume the active .phased workflow and tell me its next safe step."
+  }
+}
