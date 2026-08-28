@@ -5,7 +5,13 @@ description: Read-only quality-check verification in a clean sub-session — ret
 
 # Quality Check — Agent
 
-The read-only half of `/quality-check`, run in a clean context at the plan's root (launched via `agent-session.sh`, or `codex exec '/quality-check-agent'` by hand). There is nobody here who can answer a question: **never ask — verify, review, report.** Every decision — the review's consequences, the stamp itself, everything downstream — belongs to the parent chat.
+The read-only half of `/quality-check`, run in a clean context at the plan's
+root through `bash "<PLUGIN_ROOT>/scripts/agent-session.sh"
+quality-check-agent`. That launcher fixes `gpt-5.6-sol` and Codex
+`workspace-write`; do not hand-launch a lower review model. There is nobody here
+who can answer a question: **never ask — verify, review, report.** Every
+decision — the review's consequences, the stamp itself, everything downstream
+— belongs to the parent chat.
 
 **Base skill: quality-check.** This agent runs its Step 5 review criteria unattended and returns the findings; it adds only the unattended constraints below. **Shared conventions:** `<PLUGIN_ROOT>/refs/common.md` and `<PLUGIN_ROOT>/refs/contracts.md`.
 

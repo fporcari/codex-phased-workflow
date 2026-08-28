@@ -55,3 +55,25 @@ parameter to prevent it.
 
 The strip is an accurate snapshot of the moment it was asked for. Ask again and a
 new one is drawn.
+
+## Optional live dashboard
+
+`/dashboard` is a separate, local monitoring surface, not a richer version of
+this strip. It may render the roadmap, phase markers, notes, verification steps,
+durable logs, alerts, and proposal buttons because every one of those facts is
+already on disk. Its server binds only to `127.0.0.1`, authenticates every read
+and write, and writes requests to the owner-private transport outside the repo.
+
+The server has no workflow authority. A button queues a proposal for the Codex
+task that opened the page; that task drains and serves it through the owning
+skill. The page never spawns a worker, edits `.phased/`, sends a cross-task
+message, or treats a browser tick as a durable gate. An interactive launch still
+returns `/execute-phase` as text for a fresh task. An autonomous launch returns
+to `/run-workflow` for its preflight and monitor.
+
+The visual shell and portable interactions stay identical to the Claude
+dashboard. Codex does not expose a stable local transcript, todo, or priced
+token feed to plugins, so those same panels show an explicit unavailable state
+instead of fabricated data. The Foreman pane mirrors the owner-scoped proposal
+queue. `CODEX_THREAD_ID` is used only as ephemeral queue ownership; it is never
+written into `.phased/` and never substitutes for the plan's durable state.

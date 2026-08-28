@@ -22,6 +22,11 @@ Use resume-workflow and tell me whether this repository has an active phased pla
 If no plan exists, start with `write-workflow` after discussing the work. For a
 decision-heavy idea, use `scope-workflow` first.
 
+The optional local dashboard needs no additional package. Invoke `dashboard`
+inside a repository to open it in Codex's browser panel. The textual workflow
+remains the fallback and the dashboard is never required; see
+[wfdash](wfdash.md) for its proposal and security boundaries.
+
 ## Verify the installation
 
 ```bash

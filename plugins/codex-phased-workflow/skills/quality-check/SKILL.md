@@ -87,11 +87,31 @@ bash "<PLUGIN_ROOT>/scripts/agent-session.sh" quality-check-agent
 
 Extended also hunts cross-phase issues — Light's whole scope is a subset of Extended's.
 
-**Large autonomous diffs:** add a fourth option, **Panel**, and recommend it in place of Extended — 4 dimensions (correctness, cross-phase coherence, pattern conformance, test coverage) in parallel, each finding then verified by 3 independent skeptics prompted to *refute* it, keeping only what survives a majority. Read-only, under ~15 agents, never edits source.
+**Large autonomous diffs:** add a fourth option, **Panel**, and recommend it in
+place of Extended. Run four read-only dimensions in parallel — correctness,
+cross-phase coherence, pattern conformance, test coverage — each returning
+`MECHANICAL:`/`JUDGMENT:` findings, most severe first, or exactly
+`NO FINDINGS`. Rank the union and take the four most severe; for each, run
+three read-only skeptics in parallel, each returning exactly
+`REFUTED: <why>` or `STANDS: <diff line proving it>`. Keep a finding on two of
+three `STANDS`. Present findings beyond the fourth as unverified rather than
+silently dropping them. The panel is 4 + 12 = **16 agents, fixed by
+construction**, and never edits source.
 
 The worktree path above is exempt from the question: the agent's prompt ships fixed in the plugin, and that is what keeps its review independent.
 
-Findings → present them per `foreman.md` → *The reporting register*: the short form (verdict line, one line per finding, its consequence for the user), passed through the `report-judge` comprehension probe before showing — **skip the probe when the review returns no findings**: a clean verdict line has nothing to misread — delivered as the register's report page where the session can render one. Then ONE question — *"The pre-commit review found N problems. Fix them first, or shall I stamp the check as it stands?"* (recommended: fix first) — on the degraded chat-only path with the register's detail option folded in (*Expand the details before deciding*), never as a second question. Fixing is delegated, not done here; then re-run `/quality-check`.
+Findings → present them per `foreman.md` → *The reporting register*: the short
+form (verdict line, one line per finding, its consequence for the user), passed
+through the comprehension probe in `<PLUGIN_ROOT>/judges/report-judge.md` by
+ONE fresh read-only Codex subagent. Never invoke a bare judge name: Codex
+packages these as prompt files, not discoverable named agents. **Skip the probe
+when the review returns no findings**: a clean verdict line has nothing to
+misread. Deliver it as the register's report page where the session can render
+one. Then ONE question — *"The pre-commit review found N problems. Fix them
+first, or shall I stamp the check as it stands?"* (recommended: fix first) — on
+the degraded chat-only path with the register's detail option folded in
+(*Expand the details before deciding*), never as a second question. Fixing is
+delegated, not done here; then re-run `/quality-check`.
 
 This is the only whole-diff review on the "Merge into parent" and "Commit only" close-out paths — `/pull-request` adds a maintainer-grade one only on the PR path.
 

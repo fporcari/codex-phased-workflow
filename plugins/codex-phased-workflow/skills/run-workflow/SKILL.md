@@ -6,9 +6,11 @@ description: Run every remaining phase autonomously in a fresh high-quality Code
 # Run workflow
 
 Run the remaining phases through `<PLUGIN_ROOT>/scripts/run-workflow.sh`. Each
-phase and repair gets a fresh ephemeral `codex exec` session using
-`gpt-5.6-sol`. The plan's effort is honored; the implementation model never
-drops below Sol.
+phase and repair gets a fresh ephemeral `codex exec` session using fixed
+`gpt-5.6-sol`, Codex `workspace-write`, and the plan's effort. This chat is the
+inspector: it owns the live `EVENT:` stream, dashboard requests, plan-defect
+return leg, and graceful stop. The launcher owns worker processes and durable
+logs; neither surface changes the portable `.phased/` state machine.
 
 ## Pre-flight gate
 
@@ -26,21 +28,69 @@ drops below Sol.
 4. Preserve the compatibility model labels in the plan. `opus` and `fable` are
    portable protocol vocabulary shared with Claude; Codex maps both, plus any
    legacy `sonnet`, to `gpt-5.6-sol`. Effort remains `low|medium|high|xhigh|max`.
-5. Show the final phase list and the runtime mapping. End with the explicit
+5. Read `## Suggested execution config`: every row is `Phase <N>`, and its
+   effort is one of `low|medium|high|xhigh|max`. The selector validates the
+   table; the launcher reads it by column position. There is no environment
+   override for the implementation model.
+6. Show the final phase list and the runtime mapping. End with the explicit
    launch gate: “Launch? On your ok the autonomous run starts over all remaining
    phases.” Do not start before that answer.
 
 ## Launch
 
-Run in the foreground when no durable monitor is available:
+Resolve the transport prefix and keep the complete inspector log outside the
+repository. Run it in a durable terminal/session so this chat can keep serving
+the stream:
 
 ```bash
-bash "<PLUGIN_ROOT>/scripts/run-workflow.sh"
+T=$(python3 "<PLUGIN_ROOT>/scripts/next-phase.py" --transport)
+install -d -m 700 "$(dirname "$T")"
+bash "<PLUGIN_ROOT>/scripts/run-workflow.sh" 2>&1 | tee "$T-run.log"
 ```
 
-The launcher emits `EVENT:` lines and writes logs beside the active plan. Report
-phase completion, the first failure, every blocked phase, and the final outcome.
-Do not infer success from process exit alone: read the plan markers afterward.
+The launcher writes the complete worker attempt outside the tree while it is
+running. Once that attempt lands its one outcome commit, the launcher copies the
+log to `log/phase-N.txt` or `log/repair-N.txt` beside the plan and amends that
+same commit; the tree stays clean and the durable record remains portable.
+
+## Monitor and return legs
+
+Follow `EVENT:` lines, the process result, and the plan marker together. Report
+each `phase-done`, `phase-repaired`, `phase-applied`, first failure, blocked
+phase, and final `run-end`. After every landed phase, inspect the changed phase
+against the plan: its negative assertions must not contradict another phase's
+`Decisions:` or `Done:`, including golden files and round trips. A newly exposed
+contradiction is a plan defect, not an implementation success to wave through.
+
+When `EVENT: phase-needs-foreman:N` appears, relay the recorded claim to the
+foreman/user and write exactly one answer to `$T-foreman-answer`:
+
+- `plan-defect: repair` — recommended when implementability is uncertain;
+- `plan-defect: apply` — only for an explicit before-text → after-text edit;
+- `plan-defect: stop` — end the autonomous run and return planning authority.
+
+On apply, the launcher emits `phase-apply-wait` and holds the workspace. Apply
+only the declared edit to both contract copies, re-run the phase's literal
+`Done:`, and follow `refs/foreman.md` → *Plan-defect claims*. Write `green` or
+`red` to `$T-apply-outcome` before the deadline. Red, timeout, or an edit that
+expands into a rewrite falls through to fresh repair.
+
+The optional dashboard queues proposals rather than starting work. While this
+skill owns the run, drain only requests stamped for this Codex task:
+
+```bash
+python3 "<PLUGIN_ROOT>/scripts/wfdash/outbox.py" -C "$PWD" --drain --owner "${CODEX_THREAD_ID:-}"
+```
+
+Collapse duplicate `run-workflow` intents, ignore an intent for a run already
+active, and serve a `stop` by creating `$T-stop-request`. Requests stamped for
+another task remain queued. An ownerless request is shown explicitly and needs
+the current user's confirmation before this chat serves it.
+
+For a deliberate graceful stop, create `$T-stop-request`. The launcher checks
+between sessions, never kills a worker mid-write, and ends with
+`EVENT: run-end:stopped-by-request`. `RUN_WORKFLOW_MAX_PHASES=N` likewise counts
+landed phases, not attempts, and stops at the next clean boundary.
 
 ## Stop conditions
 
@@ -51,6 +101,12 @@ Do not infer success from process exit alone: read the plan markers afterward.
 - Codex exits non-zero;
 - a session returns without changing the expected durable state;
 - the configured maximum phase count is reached.
+
+Timeouts are numeric seconds: `RUN_WORKFLOW_SESSION_TIMEOUT` (default 3600),
+`RUN_WORKFLOW_CONSULT_TIMEOUT` (600), and `RUN_WORKFLOW_APPLY_TIMEOUT` (900).
+Missing foreman response follows the documented repair default. One failed
+repair, no durable progress, invalid state, or the session budget ends the run;
+the inspector never loops indefinitely.
 
 Never merge, publish, deploy, delete user data, or perform another external
 side effect merely because the workflow is autonomous. Those actions still need

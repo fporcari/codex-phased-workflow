@@ -62,7 +62,13 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 
 Same rules as `/execute-phase-agent` Step 4: green signal = test suite + linter on the touched files; up to **3 fix attempts** with the no-progress detector; then re-check every item of `Done:` literally.
 
-Then run ONE `phase-verifier` subagent scoped to this phase's files — MECHANICAL findings fixed within the same budget, JUDGMENT recorded as `> Review:`. Unlike a normal phase, here it runs **unconditionally**: this code already failed once and was just patched under a bounded budget, which is the one case where a fresh independent pass reliably pays.
+Then load `<PLUGIN_ROOT>/judges/phase-verifier.md` and give that shipped prompt
+to ONE fresh read-only Codex subagent scoped to this phase's files. Never invoke
+a bare judge name: Codex packages these as prompt files, not discoverable named
+agents. MECHANICAL findings are fixed within the same budget; JUDGMENT is
+recorded as `> Review:`. Unlike a normal phase, this runs **unconditionally**:
+the code already failed once and was patched under a bounded budget, which is
+the case where a fresh independent pass reliably pays.
 
 ## Step 5: The verdict is yours
 
@@ -71,7 +77,7 @@ Show what it turned out to be, what changed, and which signal is green that was 
 On your ok, record the outcome for the way in:
 
 - **Came in `[!]`** → the phase closes: `[x]` + `> Repaired:`, as below.
-- **Came in `[>]`** → the phase **goes back to `[>]`** carrying `> Repaired:` and its existing `> WIP:` note, and this chat sends the outcome to the phase chat (`wf:<slug>:phase-N` in `list_sessions` — `foreman.md` → *The foreman*, including the rule that a tool you have not loaded is not a tool that is absent) and tells you to carry on there. It does not touch anything else: the phase is not finished, and finishing it is that chat's job.
+- **Came in `[>]`** → the phase **goes back to `[>]`** carrying `> Repaired:` and its existing `> WIP:` note, and this task sends the outcome to the phase task (`wf:<slug>:phase-N`, resolved through the available Codex task-listing tool — `foreman.md` → *The foreman*, including the rule that a tool you have not loaded is not a tool that is absent) and tells you to carry on there. It does not touch anything else: the phase is not finished, and finishing it is that task's job.
 
 **One chat is one attempt.** If the repair eats this whole context without a green signal, the problem is not a bug: leave `[!]` + `> Repair attempted:`, send the foreman the `blocked` line (`foreman.md` → *The foreman*), and say plainly that this belongs in a re-planning conversation, not in another repair.
 

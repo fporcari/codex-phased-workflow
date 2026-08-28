@@ -62,12 +62,28 @@ is what makes `[x]` a contract instead of a claim.
 
 **Contract tests gate the close too.** Where the plan carries
 `tests/phase-N/` for this phase (`contracts.md` → *Contract tests*), check the
-in-tree copies against the plan copies: executable tests byte-identical,
-skeletons with their names and every `wf:contract:` line surviving verbatim
-and no red body left. A divergence not covered by a foreman decision in
+in-tree copies against the plan copies AND the plan copies against the commit
+that added the plan (`git diff <plan-commit> HEAD -- <plan-dir>/tests/phase-N/`
+empty). Executable tests are byte-identical; skeletons keep their names and
+every `wf:contract:` line verbatim, with no red body left. A divergence not covered by a foreman decision in
 `notes.md` under `## Phase N` blocks the close exactly like a red
 criterion — the contract was edited by the wrong writer, and closing over
 it would launder the edit into `[x]`.
+
+**The contract fields have the same gate.** Markers and `>` notes move during
+execution; `Done:`, authored `Verify:`, `Pattern:`/`Pattern reference:`,
+`Files:`, and `Decisions:` do not. Resolve the plan path as `PLAN`, find its
+addition on this branch only, and compare the selector's normalized block:
+
+```bash
+PC=$(git log -1 --diff-filter=A --format=%H HEAD -- "$PLAN")
+diff <(git show "$PC:$PLAN" | python3 "<PLUGIN_ROOT>/scripts/next-phase.py" --contract-block N -) \
+     <(python3 "<PLUGIN_ROOT>/scripts/next-phase.py" --contract-block N "$PLAN")
+```
+
+An empty `PC`, or a diff without a covering foreman decision in `notes.md`
+under `## Phase N`, blocks the close. Never search `--all`: a reused slug on
+another branch is not this plan's origin.
 
 **Two ways a criterion goes unmet, and only one of them is a refusal.**
 Something the phase built is red — a failing test, a lint error — and the

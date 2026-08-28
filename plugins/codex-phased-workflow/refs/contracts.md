@@ -65,7 +65,7 @@ login per session usually suffices — the cookie persists across iterations.
 **The mockup is the visual contract** of a `ui`-tagged phase: approved at the
 phase's gate, saved as `mockups/phase-N.html` in the plan directory, committed
 with the phase. The browser pass screenshots the real page next to it, and a
-fresh-context judge (the `ui-judge` agent) compares the two — because the
+fresh-context judge loaded from `<PLUGIN_ROOT>/judges/ui-judge.md` compares the two — because the
 author of a UI is the worst judge of its own fidelity. What the judge flags as
 a human call lands in `> Review:`; what remains for human eyes (taste beyond
 the mockup) stays on the `Verify:` list.
@@ -75,9 +75,9 @@ phase, and `/quality-check` presents the file as one QA pass at the end
 instead of scattering checks the user cannot yet perform.
 
 **The QA pass is delivered as a QA page** where the session can render a file
-to the user (SendUserFile on the desktop): a manual test plan written outside
-the repo (`${TMPDIR:-/tmp}/phased-workflow/<slug>-qa.html` — a file in the
-tree would dirty it), one checkbox per check, grouped by phase, each item
+to the user: a manual test plan written outside the repo (`<transport>-qa.html`,
+where `next-phase.py --transport` names the owner-private prefix — a file in
+the tree would dirty it), one checkbox per check, grouped by phase, each item
 naming the action to exercise and the result the user should see — the
 reporting register (`refs/foreman.md`) applies. A deferred step whose phase has since landed is
 marked as now due. The checkboxes are the user's own tracking while they work
@@ -169,7 +169,10 @@ The rules, in both execution modes:
 - **The phase copies its own tests verbatim** from `tests/phase-N/` into the
   repo's test tree at phase start, and implements until they are green. The
   copy — and a skeleton's body — is the phase's work; the contract is not.
-- **The contract is read-only for the child.** A test that cannot pass as
+- **The contract is read-only for the child.** The phase may move its marker
+  and append `>` notes, but never edits the foreman-owned `Done:`, authored
+  `Verify:`, `Pattern:`/`Pattern reference:`, `Files:`, or `Decisions:` fields.
+  A test that cannot pass as
   written — a wrong premise, an assertion the design outgrew — is a plan
   ambiguity, never a local fix: interactive phases route it as `clarify?`
   (`refs/foreman.md` → *The foreman*), and the foreman's reply carries the exact test edit as
@@ -184,12 +187,17 @@ The rules, in both execution modes:
   in-dialect both times, and the repair found the better design. The claim
   is judged upstream — the foreman through the gate, or fresh repair eyes on
   its timeout — and in no case by editing the contract.
-- **The close verifies the copy.** `/close-phase`'s Done gate (and the
-  phase-verifier, where it runs) checks the in-tree copy against the plan
-  copy: executable tests byte-identical; skeletons with their test names and
+- **The close verifies the copy and its origin.** `/close-phase`'s Done gate
+  (and the phase-verifier, where it runs) checks the in-tree copy against the
+  plan copy AND the plan copy against the plan commit (`git diff <plan-commit>
+  HEAD -- <plan dir>/tests/phase-N/` empty): editing both copies cannot hide a
+  rewritten contract. Executable tests byte-identical; skeletons with their test names and
   every `wf:contract:` line surviving verbatim and no red body left. Any
   divergence must be covered by a foreman decision recorded in `notes.md`
   under the phase's `## Phase N` — a silent one blocks the close.
+
+Contract tests are linted when authored, before the plan commit. A plan that
+demands clean lint of a copied test cannot begin from a red source copy.
 
 A plan without the option keeps today's behaviour: tests are written by each
 phase, and the cross-phase direction is prose

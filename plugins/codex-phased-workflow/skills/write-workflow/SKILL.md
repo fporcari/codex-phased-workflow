@@ -51,9 +51,9 @@ The answer routes the rest of this skill:
 
 Extract from the conversation: objective, phases, files per phase, pattern references, decisions, sizing, notes.
 
-**Pattern references.** Every `/execute-phase` runs in a fresh chat: whatever isn't in the plan gets re-discovered there, phase after phase. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch one read-only Explore subagent per phase instead of searching serially, and reason over what they return.
+**Pattern references.** Every `/execute-phase` runs in a fresh chat: whatever isn't in the plan gets re-discovered there, phase after phase. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch read-only Explore subagents in waves of at most four instead of searching serially. Each returns at most two concrete candidates with verified paths, or exactly `NO CANDIDATE`, and identifies any premise it could not verify.
 
-**Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into Codex user-input prompt, and recorded in `Decisions:`. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
+**Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into Codex user-input prompt, and recorded in `Decisions:`. For a shared table, settle the row-set boundary (which records appear and which are excluded). For UI composition, settle the intended hierarchy and relationships while leaving the mockup-negotiable presentation details to the interactive phase. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
 **Contract tests.** One more option, asked with the Decisions batch: author
 the tests of EVERY phase now, while the whole design sits in one context —
@@ -67,8 +67,9 @@ contract — the two precisions, where the tests live, the child's read-only
 rule, the integrity check at close — lives once in `contracts.md` → *Contract
 tests*; writing them inside `.phased/` keeps this skill's own first rule
 intact. Authoring them is plan-time work: derive each phase's tests from its
-`Details:` and `Done:`, in the repo's own test style, and present them with
-the plan.
+`Details:` and `Done:`, in the repo's own test style, lint every authored test
+with the repository's narrow test/lint command before the plan commit, and
+present them with the plan.
 
 **The consumer question.** When `.phased/roadmap.md` has unstarted
 macro-phases — or the discussion names later work that will consume this

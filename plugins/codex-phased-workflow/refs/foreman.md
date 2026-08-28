@@ -67,15 +67,29 @@ requires an impossible state. The worker records:
 > Attempted: <what established that this is the plan, not the implementation>
 ```
 
-It does not rewrite the plan's intent. The foreman chooses one of two outcomes:
+It does not rewrite the plan's intent. When the claim includes the exact
+contract edit as before-text → after-text, the foreman chooses one of three
+outcomes:
 
-- `plan-defect: repair` — amend the plan in its own `wf:` commit, then authorize
-  a fresh repair;
+- `plan-defect: repair` — authorize a fresh repair with independent eyes;
+- `plan-defect: apply` — apply exactly the declared edit to both contract
+  copies, re-run the phase's `Done:`, and report the result;
 - `plan-defect: stop` — keep the failure visible and stop the run.
 
-An unattended launcher may hold briefly for that decision. If no live return
-channel exists, it must stop or follow its documented timeout rule; it never
-silently invents a new requirement.
+The apply road is deliberately narrow. While the launcher holds the workspace,
+the supervising run applies the declared before→after edit to the plan copy and
+the in-tree copy, keeping them byte-identical. Green `Done:` flips the phase to
+`[x]`, retains the `> Issue:` for the record, adds
+`> Applied: plan-defect edit — <one line>`, and commits
+`wf: plan defect phase N — applied — <one line>`. Red, a missing exact edit, a
+rewrite that grows beyond the declaration, or the apply deadline expiring
+restores the touched files, records a red outcome, and proceeds to fresh repair.
+
+An unattended launcher holds briefly for the decision and, on apply, for the
+outcome. No live reply follows the documented timeout to repair; it never
+silently invents a requirement. A granted stop leaves the tree free for the
+foreman to clarify with the user and amend both plan and contract tests in a
+separate `wf:` commit before relaunching.
 
 ## Notes ledger
 
@@ -103,10 +117,11 @@ not watch the implementation:
 - keep mechanical details in logs unless they change a decision;
 - never claim searched, tested, or verified unless it happened in that session.
 
-For a major report or close-out, a fresh read-only `report-judge` subagent may
-probe whether the draft answers: what changed, what remains, what was verified,
-and what the user must decide. It returns comprehension gaps only. Revise once;
-do not start an editorial loop.
+For a major report or close-out, load `<PLUGIN_ROOT>/judges/report-judge.md` and
+give that shipped prompt to a fresh read-only Codex subagent. It probes whether
+the draft answers: what changed, what remains, what was verified, and what the
+user must decide. It returns comprehension gaps only. Revise once; do not start
+an editorial loop or invoke a bare judge name.
 
 ## Notifications
 

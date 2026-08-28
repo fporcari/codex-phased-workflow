@@ -34,8 +34,10 @@ what the issue says — you find it yourself with Grep, Read, `git log`,
 `gh issue view`. Asking the user something the filesystem could answer spends their
 attention on your legwork.
 
-From ~3 areas to survey, dispatch one read-only Explore subagent per area instead of
-searching serially, and reason over what they return.
+From ~3 areas to survey, dispatch one read-only Explore subagent per area — at most
+four at once — instead of searching serially. Each returns the concrete paths it
+verified and, one line each, the premises it could not verify; those become the
+unverifiable facts below rather than questions to the user.
 
 Report the ground in a few lines, with concrete paths, so a wrong premise gets
 corrected before it costs a whole branch of questions.
@@ -50,7 +52,7 @@ Every question here exists to fill a field of the plan. Know which one before yo
 | Field | What the question settles |
 |---|---|
 | `Mode:` | interactive or autonomous — **ask this first** |
-| `Decisions:` | naming, signatures, library, API shape, trade-offs |
+| `Decisions:` | naming, signatures, library, API shape, trade-offs, what the new surface must refuse, and at which layer |
 | `Pattern:` | which existing example each non-trivial phase copy-adapts |
 | `Files:` | the surface each phase touches, or its discovery rule |
 | `Done:` | what "finished" means, re-runnably |
@@ -68,6 +70,10 @@ order is free.
 
 A decision belongs to the user when either answer leads to materially different work.
 Everything else is yours — make it, say you made it, move on.
+
+Phrase a mode or tier question at the deployment level first — who ever sees
+both? — before choosing UI treatments for another tier. Those treatments only
+exist in the mixed case, and the deployment answer may remove the premise.
 
 **Done when** you can name the first question and say which later ones its answer
 would change.

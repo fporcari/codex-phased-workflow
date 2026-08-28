@@ -29,6 +29,20 @@ Output: a "phases:" table plus one final "recommendation:" line:
 "validate: N error(s), M warning(s)". Exit 0 when clean or warnings only,
 1 on validation errors, 2 when the plan is unreadable or unresolvable.
 
+--json emits the whole selection as one object instead of the table: the
+phases with their markers, notes, Run: and Verify: steps, "next", "blocked_by",
+the "recommendation" verb, the meta headers and the plan path. It is what a
+machine consumer reads, so the plan format keeps a single reader. A plan path
+of "-" reads the plan from stdin, for a plan held in a branch rather than on
+disk.
+
+--transport prints the out-of-tree prefix every control file of ONE plan is
+named from: `${TMPDIR:-/tmp}/phased-workflow-<uid>/<slug>-<repo key>`. The repo
+key is what keeps two checkouts sharing a slug — a root and the worktree the
+launcher itself creates for it — from consuming each other's stop request,
+consult answer and apply outcome. Nothing is created: the caller owns the
+directory (`install -d -m 700`).
+
 --plans lists every workflow plan reachable from this repo — the current
 root's, every linked worktree's, and every wf/* branch with no worktree
 (read without checkout) — one pipe-separated line per plan:
@@ -37,6 +51,9 @@ root's, every linked worktree's, and every wf/* branch with no worktree
 """
 
 import argparse
+import hashlib
+import json
+import os
 import pathlib
 import re
 import subprocess
@@ -47,11 +64,29 @@ PHASE_RE = re.compile(r'^- \[([ x!~>])\] \*\*Phase (\d+)\*\*:\s*(.*)$')
 TAG_RE = re.compile(r'`(vast)`')
 EXEC_RE = re.compile(r'In execution since\s+(\S+)')
 WIP_COMMIT_RE = re.compile(r'commit:\s*([0-9a-f]{7,40})\b')
+RUN_RE = re.compile(r'^\s*[-*]?\s*Run:\s*(.+)$', re.I)
+# `- Verify:` is the step the plan AUTHORED; `> Verify:` is the one execution
+# recorded — the latter is a note like any other.
+VERIFY_RE = re.compile(r'^\s{2,}[-*]\s*Verify:\s*(.*)$', re.I)
+META_RE = re.compile(r'^\s*[-*]?\s*(Mode|Parent|Branch):\s*(.+)$', re.I)
+# Any other field of a phase — it ends the field before it, nothing more.
+FIELD_RE = re.compile(r'^\s*[-*>]')
+# The quality check leaves one line per run under its own heading, and the last
+# governs. The heading is what bounds it: the same words inside a phase note are
+# a phase talking about the check, not the check having run.
+QUALITY_HEAD_RE = re.compile(r'^##\s+Quality check\s*$', re.I)
+QUALITY_RE = re.compile(r'^\s*>\s*Quality check:\s*(.+)$')
+# Known limitation: NOTE_RE cannot distinguish a new note field from a
+# wrapped continuation line of a previous note that happens to begin
+# "Capitalised:" — such a line draws the unknown-field warning. Accepted by
+# design: it is a warning, and a warning never blocks.
+NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):\s*(.*)$')
 
 
 class Phase:
-    def __init__(self, status, number, rest):
+    def __init__(self, status, number, rest, line=0):
         self.status = status
+        self.line = line
         self.number = int(number)
         self.tags = TAG_RE.findall(rest)
         self.title = TAG_RE.sub('', rest).strip()
@@ -59,6 +94,9 @@ class Phase:
         self.wip = False
         self.wip_commit = None
         self.testing = False
+        self.run = None
+        self.notes = []
+        self.verify = []
 
     @property
     def age_hours(self):
@@ -73,23 +111,84 @@ class Phase:
 
 
 def parse_lines(lines):
-    phases = []
-    for line in lines:
-        m = PHASE_RE.match(line.rstrip())
+    """The phases of a plan and its header fields, from its text.
+
+    A field wrapped over several lines is joined: the plans wrap at 80
+    columns, and half a sentence is not a check anybody can run.
+
+    Third return value: the block boundaries, as `(line number, ends the
+    header)` pairs — a phase marker or a `## ` heading, plus an end-of-text
+    sentinel. `payload` turns them into each phase's line span, so the
+    dashboard cuts a block out of plan.md by number instead of re-deriving
+    the format.
+    """
+    phases, meta = [], {}
+    bounds = []
+    current = None
+    pending = None                      # the field an indented line continues
+    quality = False                     # inside the `## Quality check` section
+    n = 0
+    for n, raw in enumerate(lines, 1):
+        line = raw.rstrip()
+        if not line.strip():
+            pending = None
+            continue
+        if line.startswith('## '):
+            current, pending = None, None
+            quality = bool(QUALITY_HEAD_RE.match(line))
+            bounds.append((n, line.startswith('## Work Plan')))
+            continue
+        if quality:
+            m = QUALITY_RE.match(line)
+            if m:
+                meta['quality_check'] = m.group(1).strip()
+            continue
+        m = PHASE_RE.match(line)
         if m:
-            phases.append(Phase(*m.groups()))
-        elif phases and line.lstrip().startswith('>'):
+            phases.append(Phase(*m.groups(), line=n))
+            current, pending = phases[-1], None
+            bounds.append((n, True))
+            continue
+        m = META_RE.match(line)
+        if m and current is None:
+            meta[m.group(1).lower()] = m.group(2).strip()
+            continue
+        if current is None:
+            continue
+        if line.lstrip().startswith('>'):
             m = EXEC_RE.search(line)
             if m:
-                phases[-1].since = m.group(1)
+                current.since = m.group(1)
             if 'WIP:' in line:
-                phases[-1].wip = True
+                current.wip = True
                 cm = WIP_COMMIT_RE.search(line)
                 if cm:
-                    phases[-1].wip_commit = cm.group(1)
+                    current.wip_commit = cm.group(1)
             if 'Testing:' in line:
-                phases[-1].testing = True
-    return phases
+                current.testing = True
+            m = NOTE_RE.match(line)
+            pending = ({'kind': m.group(1).strip(), 'text': m.group(2)}
+                       if m else None)
+            if pending:
+                current.notes.append(pending)
+            continue
+        m = RUN_RE.match(line)
+        if m:
+            current.run = m.group(1).strip()
+            pending = None
+            continue
+        m = VERIFY_RE.match(line)
+        if m:
+            pending = {'text': m.group(1)}
+            current.verify.append(pending)
+            continue
+        if FIELD_RE.match(line):
+            pending = None
+            continue
+        if pending is not None and line.startswith('    '):
+            pending['text'] = f"{pending['text']} {line.strip()}"
+    bounds.append((n + 1, True))
+    return phases, meta, bounds
 
 
 def parse(path):
@@ -140,6 +239,28 @@ def resolve_plan_path():
     return str(found[0]), None
 
 
+def transport_prefix(plan_path):
+    """The prefix every out-of-tree control file of this plan is named from.
+
+    `<TMPDIR|/tmp>/phased-workflow-<uid>/<slug>-<repo key>` — the uid segment
+    makes the directory multi-user (a fixed 0700 `/tmp/phased-workflow` locks
+    out every other user of a shared host), the repo key makes the FILES
+    unambiguous: the stop request, the consult answer, the apply outcome and
+    the run log were named from the slug alone, so two checkouts carrying the
+    same plan — a root and the worktree the launcher creates for it — read and
+    consumed each other's signals. The directory computation is mirrored in
+    wfdash/outbox.py; the S55 guard holds the two together.
+    """
+    plan = pathlib.Path(os.path.realpath(plan_path))
+    slug = plan.parent.name
+    # <root>/.phased/active/<slug>/plan.md — the root is what identifies the
+    # checkout, so a worktree and its parent never collide.
+    root = str(plan.parent.parent.parent.parent)
+    key = hashlib.sha1(root.encode()).hexdigest()[:12]
+    tmp = pathlib.Path(os.environ.get('TMPDIR') or '/tmp')
+    return str(tmp / f'phased-workflow-{os.getuid()}' / f'{slug}-{key}')
+
+
 # --- plan location (--plans) ------------------------------------------------
 # Every workflow plan reachable from this repo: the current root's active
 # plan(s), every linked worktree's, and every wf/* branch that has no worktree,
@@ -178,7 +299,7 @@ def list_plans():
     checkouts = worktree_map()
     for branch, path in checkouts.items():
         for plan in sorted(pathlib.Path(path).glob('.phased/active/*/plan.md')):
-            rows.append((str(plan), branch, path, parse(plan)))
+            rows.append((str(plan), branch, path, parse(plan)[0]))
     for line in _git(['for-each-ref', '--format=%(refname:short)',
                       'refs/heads/wf/'], cwd=root).splitlines():
         if line in checkouts:
@@ -191,7 +312,7 @@ def list_plans():
             text = _git(['show', f'{line}:{name}'], cwd=root)
             if text:
                 rows.append((f'{line}:{name}', line, None,
-                             parse_lines(text.splitlines())))
+                             parse_lines(text.splitlines())[0]))
     return rows
 
 
@@ -253,16 +374,95 @@ def recommend(phases):
     return 'blocked: pending phases exist but none is eligible'
 
 
+# --- the machine payload (--json) -------------------------------------------
+# The whole selection as one object, so the plan format has a single reader:
+# the dashboard consumes this instead of parsing plan.md a second time.
+
+
+def payload(path, phases, meta, bounds):
+    out = []
+    for i, p in enumerate(phases):
+        end = next((b for b, _ in bounds if b > p.line), p.line + 1)
+        out.append({
+            'n': p.number, 'status': p.status, 'title': p.title,
+            'tags': p.tags, 'run': p.run, 'notes': p.notes,
+            'verify': p.verify, 'since': p.since, 'wip': p.wip,
+            'wip_commit': p.wip_commit, 'testing': p.testing,
+            'blocked_by': blockers(phases, i),
+            'span': [p.line, end - 1],
+        })
+    nxt = next((p['n'] for p in out
+                if p['status'] == ' ' and not p['blocked_by']), None)
+    # What holds the plan up when nothing is eligible — the first phase not in
+    # a runnable state. The recommendation says WHICH of the outcomes it is.
+    blocker = None
+    if nxt is None:
+        blocker = next((p['n'] for p in out if p['status'] in '!~>'), None)
+    head_end = next((b for b, ends in bounds if ends), 1)
+    return {
+        'path': str(path), 'phases': out, 'next': nxt, 'blocked_by': blocker,
+        'recommendation': recommend(phases), 'meta': meta,
+        'header_span': [1, head_end - 1],
+    }
+
+
+# --- the contract fields of one phase (--contract-block) --------------------
+# The fields the foreman owns (refs/foreman.md → the mirror paragraph): Done:,
+# authored Verify:, Pattern:, Files:, Decisions:. The close diffs this
+# extraction at the plan commit against HEAD, so a child that rewrote or
+# deleted a contract field is caught even though markers and `>` notes — the
+# lines a phase legitimately writes — moved around it.
+
+# `Pattern reference:` is the autonomous template's spelling of `Pattern:`
+# (refs/write-workflow-autonomous.md vs write-workflow's own template): both
+# name the same foreman-owned field, so both are extracted — unifying the
+# templates would orphan the plans already in the field.
+CONTRACT_FIELD_RE = re.compile(
+    r'^\s*[-*]\s*(Done|Verify|Pattern(?: reference)?|Files|Decisions):', re.I)
+
+
+def contract_block(lines, phases, bounds, n):
+    """The contract-field lines of phase `n`, verbatim, or None without it.
+
+    Continuation lines (deeper-indented, no field/note prefix of their own)
+    travel with their field; `>` notes and the marker line are the child's to
+    add to, so they are not part of the extraction.
+    """
+    p = next((p for p in phases if p.number == n), None)
+    if p is None:
+        return None
+    end = next((b for b, _ in bounds if b > p.line), p.line + 1)
+    out, taking = [], False
+    for raw in lines[p.line:end - 1]:
+        line = raw.rstrip()
+        if not line.strip():
+            taking = False
+            continue
+        if line.lstrip().startswith('>'):
+            taking = False
+            continue
+        if CONTRACT_FIELD_RE.match(line):
+            taking = True
+            out.append(line)
+            continue
+        if FIELD_RE.match(line):
+            taking = False
+            continue
+        if taking and line.startswith('    '):
+            out.append(line)
+    return out
+
+
 # --- plan validation (--validate) -------------------------------------------
-# The validator shares PHASE_RE / TAG_RE / parse() with the selector on
-# purpose: a validator that disagreed with the selector about what a phase is
-# would be worse than none. Two severities: errors block the run (exit 1),
+# The validator shares PHASE_RE / TAG_RE / NOTE_RE / parse() with the selector
+# on purpose: a validator that disagreed with the selector about what a phase
+# is would be worse than none. Two severities: errors block the run (exit 1),
 # warnings never do (exit 0). Anything with a plausible false positive is a
 # warning by construction — rejecting a legitimate plan is worse than the
 # silent defaults the gate replaces.
 
 KNOWN_NOTE_FIELDS = (
-    'Done', 'Files', 'Issue', 'Attempted', 'Repaired', 'Repair attempted',
+    'Done', 'Files', 'Issue', 'Attempted', 'Applied', 'Repaired', 'Repair attempted',
     'Repair started',
     'Review', 'Blocked', 'WIP', 'Testing', 'In execution since', 'Verify',
     'Verified',
@@ -270,11 +470,6 @@ KNOWN_NOTE_FIELDS = (
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 MODELS = ('fable', 'sonnet', 'opus')
 CONFIG_HEADING = 'Suggested execution config'
-# Known limitation: NOTE_RE cannot distinguish a new note field from a
-# wrapped continuation line of a previous note that happens to begin
-# "Capitalised:" — such a line draws the unknown-field warning. Accepted by
-# design: it is a warning, and a warning never blocks.
-NOTE_RE = re.compile(r'^\s*> ([A-Z][A-Za-z ]*):')
 CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
 MODE_RE = re.compile(r'^Mode:\s*(\S+)\s*$')
@@ -494,14 +689,51 @@ def main():
                     help='list every plan reachable from this repo (current '
                          'root, linked worktrees, wf/* branches read without '
                          'checkout), one pipe-separated line per plan')
+    ap.add_argument('--json', action='store_true', dest='as_json',
+                    help='emit the whole selection as one JSON object '
+                         '(plan path "-" reads the plan from stdin)')
     ap.add_argument('--validate', action='store_true',
                     help='validate the plan structure and exit '
                          '(0 clean/warnings, 1 errors, 2 unreadable)')
+    ap.add_argument('--transport', action='store_true',
+                    help='print the out-of-tree prefix this plan\'s control '
+                         'files are named from, and exit')
+    ap.add_argument('--contract-block', type=int, metavar='N', default=None,
+                    help='print phase N\'s contract-field lines (Done:, '
+                         'authored Verify:, Pattern:, Files:, Decisions:) '
+                         'verbatim, for the close to diff against the plan '
+                         'commit (plan path "-" reads from stdin)')
     args = ap.parse_args()
     if args.plans:
         print_plans()
         return 0
     path = args.plan
+    if args.as_json and path == '-':
+        phases, meta, bounds = parse_lines(sys.stdin.read().splitlines())
+        json.dump(payload('-', phases, meta, bounds), sys.stdout)
+        return 0
+    if args.contract_block is not None:
+        if path == '-':
+            lines = sys.stdin.read().splitlines()
+        else:
+            if path is None:
+                path, err = resolve_plan_path()
+                if err:
+                    print(f'error: {err}')
+                    return 1
+            try:
+                lines = pathlib.Path(path).read_text(encoding='utf-8').splitlines()
+            except OSError as e:
+                print(f'error: cannot read {path}: {e}')
+                return 1
+        phases, _, bounds = parse_lines(lines)
+        block = contract_block(lines, phases, bounds, args.contract_block)
+        if block is None:
+            print(f'error: no phase {args.contract_block} in {path}')
+            return 1
+        for line in block:
+            print(line)
+        return 0
     if path is None:
         path, err = resolve_plan_path()
         if err:
@@ -510,10 +742,13 @@ def main():
     if args.resolve:
         print(path)
         return 0
+    if args.transport:
+        print(transport_prefix(path))
+        return 0
     if args.validate:
         try:
             text = pathlib.Path(path).read_text(encoding='utf-8')
-            phases = parse(path)
+            phases, _, _ = parse(path)
         except OSError as e:
             print(f'error: cannot read {path}: {e}')
             return 2
@@ -526,10 +761,13 @@ def main():
         print(f'validate: {n_err} error(s), {n_warn} warning(s)')
         return 1 if n_err else 0
     try:
-        phases = parse(path)
+        phases, meta, bounds = parse(path)
     except OSError as e:
         print(f'error: cannot read {path}: {e}')
         return 1
+    if args.as_json:
+        json.dump(payload(path, phases, meta, bounds), sys.stdout)
+        return 0
     if not phases:
         print(f'error: no phases found in {path}')
         return 1

@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import os
 import re
 import shutil
@@ -26,6 +27,91 @@ def run_selector(selector: Path, *arguments: str, cwd: Path | None = None) -> su
 
 
 class ProtocolCompatibilityTest(unittest.TestCase):
+    def test_parity_inventory_accounts_for_every_baseline_release(self) -> None:
+        expected = set(
+            (FIXTURES / "claude-6.28.7-releases.txt").read_text().splitlines()
+        )
+        inventory = (ROOT / "docs" / "PARITY.md").read_text()
+        actual = set(re.findall(r"^\| (\d+\.\d+\.\d+) \|", inventory, re.MULTILINE))
+        self.assertEqual(actual, expected)
+
+    def test_selector_json_is_the_single_machine_reader(self) -> None:
+        plan = FIXTURES / "claude-originated" / "plan.md"
+        result = run_selector(SELECTOR, "--json", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["next"], 2)
+        self.assertEqual(payload["recommendation"], "next: 2")
+        self.assertEqual(payload["meta"]["mode"], "autonomous")
+        self.assertEqual(payload["phases"][1]["run"], None)
+        self.assertEqual(payload["phases"][1]["blocked_by"], [])
+
+    def test_contract_block_keeps_foreman_owned_fields_only(self) -> None:
+        plan_text = textwrap.dedent("""\
+            # Context: wf/contract
+            Parent: main
+            Mode: autonomous
+
+            ## Work Plan
+            - [>] **Phase 1**: contract
+              - Pattern reference: `library-standard`
+              - Files: one.py,
+                two.py
+              - Decisions: keep the public shape
+              - Verify: now — inspect it
+              - Done: tests pass
+              > In execution since: 2026-08-28T08:00:00+02:00
+              > Issue: runtime note
+        """)
+        result = subprocess.run(
+            ["python3", str(SELECTOR), "--contract-block", "1", "-"],
+            input=plan_text,
+            cwd=ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Pattern reference:", result.stdout)
+        self.assertIn("  two.py", result.stdout)
+        self.assertIn("Verify: now", result.stdout)
+        self.assertNotIn("In execution since", result.stdout)
+        self.assertNotIn("Issue:", result.stdout)
+
+    def test_applied_note_is_a_known_portable_outcome(self) -> None:
+        plan = (FIXTURES / "codex-originated" / "plan.md").read_text()
+        plan = plan.replace(
+            "  - Pattern reference:",
+            "  > Applied: plan-defect edit — exact declared change\n"
+            "  - Pattern reference:",
+            1,
+        )
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as stream:
+            stream.write(plan)
+            path = Path(stream.name)
+        self.addCleanup(path.unlink)
+        result = run_selector(SELECTOR, "--validate", str(path))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("unknown note field 'Applied'", result.stdout)
+
+    def test_transport_is_stable_and_repo_keyed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            prefixes = []
+            for name in ("one", "two"):
+                repository = temporary / name
+                plan_directory = repository / ".phased" / "active" / "same-slug"
+                plan_directory.mkdir(parents=True)
+                plan = plan_directory / "plan.md"
+                shutil.copy(FIXTURES / "codex-originated" / "plan.md", plan)
+                first = run_selector(SELECTOR, "--transport", str(plan))
+                second = run_selector(SELECTOR, "--transport", str(plan))
+                self.assertEqual(first.returncode, 0, first.stderr)
+                self.assertEqual(first.stdout, second.stdout)
+                prefixes.append(first.stdout.strip())
+            self.assertNotEqual(prefixes[0], prefixes[1])
+            self.assertEqual(Path(prefixes[0]).parent.name, f"phased-workflow-{os.getuid()}")
+
     def test_both_origins_validate(self) -> None:
         for fixture in sorted(FIXTURES.glob("*/plan.md")):
             with self.subTest(fixture=fixture.parent.name):
@@ -76,6 +162,7 @@ class ProtocolCompatibilityTest(unittest.TestCase):
 
                 arguments = sys.argv[1:]
                 assert "gpt-5.6-sol" in arguments
+                assert "model_reasoning_effort=xhigh" in arguments
                 assert "-s" in arguments and "workspace-write" in arguments
                 assert "--approve-for-me" not in arguments
                 checkout = Path(arguments[arguments.index("-C") + 1])
@@ -94,6 +181,7 @@ class ProtocolCompatibilityTest(unittest.TestCase):
                     ["git", "-C", str(checkout), "commit", "-qm", f"wf(phase {number}): mock"],
                     check=True,
                 )
+                print(f"phase {number} committed")
             """))
             mock_codex.chmod(0o755)
 
@@ -111,6 +199,38 @@ class ProtocolCompatibilityTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("EVENT: run-end:done", result.stdout)
             self.assertIn("- [x] **Phase 1**", (plan_directory / "plan.md").read_text())
+            self.assertTrue((plan_directory / "log" / "phase-1.txt").is_file())
+            self.assertEqual(
+                subprocess.run(
+                    ["git", "-C", str(repository), "status", "--porcelain"],
+                    check=True,
+                    text=True,
+                    capture_output=True,
+                ).stdout,
+                "",
+            )
+
+    def test_launcher_refuses_an_interactive_plan_before_spawning(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = Path(temporary_directory) / "repo"
+            plan_directory = repository / ".phased" / "active" / "interactive"
+            plan_directory.mkdir(parents=True)
+            plan = (FIXTURES / "codex-originated" / "plan.md").read_text()
+            (plan_directory / "plan.md").write_text(
+                plan.replace("Mode: autonomous", "Mode: interactive")
+            )
+            subprocess.run(["git", "init", "-q", "-b", "wf/interactive", str(repository)], check=True)
+            launcher = PLUGIN / "scripts" / "run-workflow.sh"
+            result = subprocess.run(
+                ["bash", str(launcher)],
+                cwd=repository,
+                env=os.environ.copy(),
+                check=False,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("EVENT: run-end:preflight:mode=interactive", result.stdout)
 
     def test_worker_launchers_never_auto_approve_escalations(self) -> None:
         for script_name in ("run-workflow.sh", "agent-session.sh"):
@@ -118,6 +238,46 @@ class ProtocolCompatibilityTest(unittest.TestCase):
                 script = (PLUGIN / "scripts" / script_name).read_text()
                 self.assertIn("-s workspace-write", script)
                 self.assertNotIn("--approve-for-me", script)
+
+    def test_all_direct_worker_entry_points_pin_sol(self) -> None:
+        for skill_name in (
+            "execute-phase-agent",
+            "repair-phase-agent",
+            "quality-check-agent",
+        ):
+            with self.subTest(skill=skill_name):
+                skill = (PLUGIN / "skills" / skill_name / "SKILL.md").read_text()
+                self.assertIn("gpt-5.6-sol", skill)
+                self.assertIn("agent-session.sh", skill)
+
+    def test_codex_judges_are_loaded_from_shipped_prompt_paths(self) -> None:
+        consumers = {
+            "execute-phase": "ui-judge.md",
+            "execute-phase-agent": "phase-verifier.md",
+            "repair-phase": "phase-verifier.md",
+            "quality-check": "report-judge.md",
+        }
+        for skill_name, prompt in consumers.items():
+            with self.subTest(skill=skill_name):
+                self.assertTrue((PLUGIN / "judges" / prompt).is_file())
+                body = (PLUGIN / "skills" / skill_name / "SKILL.md").read_text()
+                self.assertIn(f"<PLUGIN_ROOT>/judges/{prompt}", body)
+
+    def test_codex_doctrine_has_no_claude_session_or_worktree_commands(self) -> None:
+        body = "\n".join(
+            path.read_text()
+            for root in (PLUGIN / "skills", PLUGIN / "refs")
+            for path in root.rglob("*.md")
+        )
+        for forbidden in (
+            "list_sessions",
+            "SendUserFile",
+            "SendMessage",
+            "ListAgents",
+            ".claude/worktrees",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, body)
 
 
 if __name__ == "__main__":

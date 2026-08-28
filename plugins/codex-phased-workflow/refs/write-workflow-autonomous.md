@@ -13,6 +13,11 @@ The fork already asked whether the plan targets autonomous execution — do not 
 5. **Measurable `Done:`.** It is the literal exit condition of the executor's loop — `/execute-phase-agent` re-runs each criterion verbatim before closing the phase. Write re-runnable checks ("pytest tests/test_foo.py::test_bar passes", "flake8 zero errors on the Files: set"), not prose.
 6. **`Verify:` only where human eyes are genuinely needed** — the mechanism is thin in this mode and most phases carry none, but it is never absent (contract: `<PLUGIN_ROOT>/refs/contracts.md` → *Verification*); each step carries its *when* (`now` / `deferred: needs Phase M`).
 7. **Contract tests carry even more weight here** — nobody watches an unattended run, so where the option (main skill, Step 3) chose them, every phase's `Done:` opens with its plan tests and a test the phase cannot pass unchanged closes it `[!]` (`contracts.md` → *Contract tests*). The option is asked once, in the main skill — do not re-ask.
+8. **Sweep negative assertions across phase boundaries.** After authoring the
+   contract tests, collect every forbidden substring and rejected shape, then
+   check it against every other phase's `Decisions:` and `Done:` — including
+   golden files and round trips. Resolve any prohibition that another phase's
+   required output can force before presenting the plan.
 
 ## Honesty check
 
@@ -35,8 +40,9 @@ is the only moment the whole programme sits in one context, and a macro
 reduced to a one-line bullet is how a future consumer's requirements die
 (issue #15). So every macro — not only the first — gets a **mini-scope**, at
 `/scope-workflow`'s bar but produced here, automated: ground facts come from
-the codebase (one read-only Explore subagent per area from ~3 up — a fact is
-looked up, never asked), and the decisions that belong to the user are
+the codebase (one read-only Explore subagent per area from ~3 up, at most four
+running at once; each returns verified paths and explicitly unverified
+premises — a fact is looked up, never asked), and the decisions that belong to the user are
 batched into ONE Codex user-input prompt round — never one interview per macro. The
 format, one block per macro:
 
@@ -66,7 +72,8 @@ perfect, and stranded at the wrong border.
 **The coherence judge.** Before the split is presented, ONE fresh-context
 subagent (Codex subagent; read-only; fallback: a general-purpose subagent told
 to stay read-only) gets the mini-scopes ALONE — not the conversation — and
-checks:
+returns one `ITINERARY: <macro N -> macro N+1> — <gap>` per broken seam, one
+`CONTRACT: <edge> — <loss>` per broken edge, or exactly `COHERENT`. It checks:
 
 1. **The itinerary first**: the `Ends at:` of every macro ≡ the
    `Starts from:` of the next. A gap here blocks the presentation — it is
@@ -129,10 +136,12 @@ Must not break: <one line per contract owned by later work — contracts.md → 
 | Phase | Effort | Model |
 |-------|--------|-------|
 | Phase 1 | ... | ... |
-| Phase N+1 (review) | xhigh | opus |
+| Phase N+1 | xhigh | opus |
 ```
 
-Keep the column order exactly as above — `/run-workflow` reads Effort and Model **by column position**.
+Keep the column order exactly as above — `/run-workflow` reads Effort and Model
+**by column position**. The Phase cell is only `Phase <number>`; a parenthetical
+there is rejected by `next-phase.py --validate`.
 
 - **Effort**: passed to Codex as `model_reasoning_effort`. Start low and climb only for a reason: `low` mechanical, `medium` standard well-specified work, `high` for surviving design judgment, `xhigh` for wide multi-file consistency, `max` for the hardest repair or architecture. The model remains `gpt-5.6-sol` at every level.
 - **Model label**: write `opus` by default and `fable` for genuinely hard architecture, debugging, or novel design. These values preserve Claude interoperability; Codex maps both to Sol and uses the effort column for depth. Accept `sonnet` from legacy plans but never author it. The final review is `opus` at `xhigh`.

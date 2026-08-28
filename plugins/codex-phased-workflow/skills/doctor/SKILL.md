@@ -83,7 +83,8 @@ agents with two different blindfolds:
    the plan, it embodies the promise. It authors `tests/phase-N/` for every
    phase, at the two precisions of `contracts.md` → *Contract tests*:
    executable where the plan fixes the signatures, `wf:contract:` skeletons
-   where it does not.
+   where it does not. It closes with `READ: <every path it opened>` so this
+   session audits the blindfold instead of merely trusting the prompt.
 2. **The sighted verifier** — a second subagent, on the `[x]` phases only,
    in plan order: fills each skeleton's body against the real code,
    implementing exactly what the `wf:contract:` lines state, and runs the

@@ -27,6 +27,7 @@ Every other skill in this plugin is **user-invoked**: only the user typing its n
 | `/doctor` | the work and the plan may have drifted apart — coherence audit, contract-test integrity, blind retro-fit of missing tests |
 | `/quality-check` | every phase is `[x]` — QA pass, naming review, whole-diff review; stamps the plan |
 | `/finalize-workflow` | quality check stamped — lessons, archive, consolidate into one commit |
+| `/dashboard` | optional authenticated local plan/roadmap/log view; this textual report remains the complete fallback |
 | `/pull-request` | the branch is ready to open a PR |
 
 ## Step 1: Find the plan and the base
@@ -50,14 +51,15 @@ take-command mechanics live once in `foreman.md` → *The foreman*):
   workflow that predates the protocol, and a workflow being resumed wants a
   foreman. Take command per `foreman.md` — write the file, ONE `wf: foreman —
   takes command` commit, title this chat.
-- **Present, and no other session bears the title** (`list_sessions`) → the
+- **Present, and no other Codex task bears the title** (use the available task
+  listing tool; without one, report liveness as unknown) → the
   title is unclaimed: either it is this very chat (fine) or the old foreman
   is dead or renamed. Either way, claim it — same take-command step, which is
   **idempotent by content** (`foreman.md`): the file already carries this
   exact title, so nothing is rewritten and no commit is made; at most, the
   chat re-applies the title to itself — the call returns the one it
   replaced, which is also how a chat learns it had drifted off it.
-- **Present, another session bears the title** → do not depose on a status
+- **Present, another task bears the title** → do not depose on a status
   query. Report it (Step 3 gets a *Foreman* line: who, since when).
   Offer the takeover through the Step 3 Codex user-input prompt only when something
   actually needs action here, or the user says they want this chat in
@@ -87,7 +89,7 @@ Flag a phase as **oversized** when its commit spans more than ~10 files, covers 
 
 ## Step 3: Report
 
-1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is waiting for the user's checks (`contracts.md` → *Verification*). Read `log/phase-N.txt` and `log/repair-N.txt` beside the plan when present; their final `EVENT:` or outcome lines show how far an unattended worker got before interruption. A `[!]` phase carrying `> Repair started:` is under repair, not immediately available for a second repair. Judge staleness from the timestamp, log, process state when locally observable, and the user's account — never from a product-specific session id. Close with one **Foreman** line naming the host in `foreman.json` and whether a live message channel is available; the committed plan remains authoritative when it is not.
+1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is waiting for the user's checks (`contracts.md` → *Verification*). Read `log/phase-N.txt` and `log/repair-N.txt` beside the plan when present. Also resolve `T=$(python3 "<PLUGIN_ROOT>/scripts/next-phase.py" --transport)` and inspect `$T-run.log`, `$T-phase-N.log`, or `$T-repair-N.log` when a worker was interrupted before its outcome commit; those external files are diagnostic only, while committed plan state is authoritative. A `[!]` phase carrying `> Repair started:` is under repair, not immediately available for a second repair. Judge staleness from the timestamp, log, process state when locally observable, and the user's account — never from a product-specific session id. Close with one **Foreman** line naming the host in `foreman.json` and whether a live message channel is available; the committed plan remains authoritative when it is not.
 2. **Workflow commits** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
 3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.

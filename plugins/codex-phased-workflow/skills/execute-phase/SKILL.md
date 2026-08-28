@@ -32,7 +32,13 @@ Mark the phase `[>]` with `> In execution since <ISO timestamp>`.
 
 ## Step 2: `vast` phases only — read-only fan-out
 
-Skip unless the phase is tagged `vast`. Partition its `Files:` list (or run its discovery rule) into slices, dispatch one read-only Explore subagent per slice, and build the Step 3 gate from their summaries instead of reading the whole surface yourself. **This fan-out writes nothing.**
+Skip unless the phase is tagged `vast`. Partition its `Files:` list (or run its
+discovery rule) into at most four slices and dispatch one read-only Explore
+subagent per slice. Each returns only one line per site as
+`<path>:<line> — <change> — <pattern>`, or exactly `NO SITES`. Build the Step 3
+gate from those lines instead of reading the whole surface yourself. `NO SITES`
+for a path the plan names is a plan ambiguity routed as `clarify?`, not an empty
+success. **This fan-out writes nothing.**
 
 ## Step 3: The approval gate (the only planned interruption)
 
@@ -57,8 +63,8 @@ Present in ONE message: what the phase will do, the files to create/modify/delet
 
 **`ui` phases — the mockup gate.** Before asking for approval, build a
 throwaway **static HTML mockup** of what the phase will produce — look and
-layout only, plausible fake data, no framework — and show it rendered
-(SendUserFile with `display: render`, or the Browser pane). This gate may
+layout only, plausible fake data, no framework — and show it with Codex's file
+or browser panel. This gate may
 loop: mockup → feedback → mockup, as long as it takes — aesthetics is all
 decision, and this is the one interruption that is legitimate by design. A
 text description of a UI is never a substitute: the stated purpose of the
@@ -85,7 +91,7 @@ Implement only this phase. When a coherent, demonstrable sub-result lands and su
 - Phases with contract tests start from them: copied verbatim and green per the shared core (`refs/phase-execution.md` → *Implement*); edits to their contract only ever arrive as a foreman `clarify:` decision.
 - Testable logic → write/update tests in the repo's existing style, run the suite. A failure that doesn't touch this phase's `Files:` is probably pre-existing: check before absorbing it, and tell the user instead. Fix and re-run, ONE retry; still red → `[!]`.
 - Purely UI/declarative → what a browser agent can assert still belongs to the machine: the `ui-test` skill (Skill tool), where installed, drives a real browser (the flow works, the record persists, the grid reloads). Run it, or say why you didn't — and when it is not installed, apply the declared fallback in `<PLUGIN_ROOT>/refs/contracts.md` → *Verification*: those checks go to the human as `Verify: now` steps, said out loud. **Login-gated target → the human performs the login, always** — first establish whether there is one, then hand over (`contracts.md` → *Verification*).
-- `ui`-tagged → the browser pass above takes `mockups/phase-N.html` as its reference and must return **screenshots of the key states** (saved next to the mockup). Then ONE `ui-judge` subagent (Codex subagent; fallback: a general-purpose subagent told to stay read-only), given the mockup path, the screenshot paths, and a one-line phase brief. Findings: **MECHANICAL** (element missing or plainly wrong vs the mockup) → fix now, re-run the check; **JUDGMENT** (a deviation that may be legitimate, an aesthetic call) → record as `> Review:`, never block. No browser surface available → the judge is skipped too; say so and hand the comparison to the human as a `Verify: now` step with both paths.
+- `ui`-tagged → the browser pass above takes `mockups/phase-N.html` as its reference and must return **screenshots of the key states** (saved next to the mockup). Load `<PLUGIN_ROOT>/judges/ui-judge.md` and give that shipped prompt to ONE fresh read-only Codex subagent, with the mockup path, screenshot paths, and a one-line phase brief. Never invoke a bare judge name: Codex packages these as prompt files, not discoverable named agents. Findings: **MECHANICAL** (element missing or plainly wrong vs the mockup) → fix now, re-run the check; **JUDGMENT** (a deviation that may be legitimate, an aesthetic call) → record as `> Review:`, never block. No browser surface available → the judge is skipped too; say so and hand the comparison to the human as a `Verify: now` step with both paths.
 - `vast` → optionally re-run the read-only fan-out to confirm no site was missed, then test as usual.
 
 What is left after that — aesthetics, "is this interaction right?", UX ambiguity — is the human's, and only that. Record it as `> Verify:` notes, each with its *when*, **starting from the phase's own authored `Verify:` fields** and adding what execution surfaced, per `<PLUGIN_ROOT>/refs/contracts.md` → *Verification*: `now` steps go in the phase summary, `deferred: needs Phase M` steps are **also appended to `verify.md`** in the plan directory, under a `## Phase N` heading, so `/quality-check` can present them as one QA pass. Never use `Verify:` to offload a check the tests could have made.

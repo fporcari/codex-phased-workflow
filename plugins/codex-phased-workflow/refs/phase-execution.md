@@ -218,9 +218,9 @@ it over; this is *how*: read the `> WIP:` note, run
 `git diff <commit>..HEAD`, and continue from `next:` toward the phase's
 own `Done:`. What `done:` claims and the diff confirms is not redone.
 
-**Look for the chat that had it, before reading the tree as an orphan.** A
-phase chat titles itself `wf:<slug>:phase-N — <title>`, so it is findable in
-`list_sessions` like the foreman is (`foreman.md` → *The foreman*, including
+**Look for the task that had it, before reading the tree as an orphan.** A
+phase task titles itself `wf:<slug>:phase-N — <title>`, so use the available
+Codex task-listing tool when one exists (`foreman.md` → *The foreman*, including
 the rule that a tool you have not loaded is not a tool that is absent). Alive
 → one message: *hand over — commit anything uncommitted, tell me what is not
 on disk, and stop working on this phase.* Its answer is a **supplement**: the

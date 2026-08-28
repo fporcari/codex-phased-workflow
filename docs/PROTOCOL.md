@@ -32,9 +32,15 @@ session API:
 | `[!]` | failed and repairable |
 | `[~]` | blocked by an unattributable baseline or external constraint |
 
-Known durable note fields are `Done`, `Files`, `Issue`, `Attempted`, `Repaired`,
+Known durable note fields are `Done`, `Files`, `Issue`, `Attempted`, `Applied`, `Repaired`,
 `Repair attempted`, `Repair started`, `Review`, `Blocked`, `WIP`, `Testing`,
 `In execution since`, `Verify`, and `Verified`.
+
+After the plan commit, a phase may change its marker and append durable `>`
+notes. The foreman owns `Done:`, authored `Verify:`, `Pattern:`/`Pattern
+reference:`, `Files:`, `Decisions:`, and plan-authored contract tests. A
+sanctioned change is recorded in `notes.md`; close compares those fields and
+tests with both the current copies and the plan commit.
 
 ## Runtime mapping
 
@@ -58,6 +64,16 @@ Codex `model_reasoning_effort`.
    because the runtime changed.
 4. `foreman.json` may update its `host`; opaque session ids are never portable.
 5. A live cross-session message is advisory. The committed plan is authoritative.
+
+## Runtime transport
+
+Stop requests, plan-defect answers, apply outcomes, active attempt logs, and
+dashboard proposals stay outside the repository. `next-phase.py --transport`
+returns an owner-private prefix under
+`${TMPDIR:-/tmp}/phased-workflow-<uid>/`, keyed by both workflow slug and
+repository root. Two checkouts carrying the same slug therefore cannot consume
+each other's signals. These files accelerate one runtime and are not part of
+the cross-product protocol.
 
 Protocol changes require fixtures for both origins and must remain readable by
 the previous released implementation unless the release explicitly declares a

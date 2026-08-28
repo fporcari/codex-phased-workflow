@@ -9,7 +9,9 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 
 **Base skill: execute-phase** — the same work with nobody to answer a question. This variant states only the unattended constraints; the mechanics shared by both modes (phase selection, implementation discipline, outcome formats, the phase commit, the WIP checkpoints) live in `<PLUGIN_ROOT>/refs/phase-execution.md` and are not restated here.
 
-**Usage:** `codex exec '/execute-phase-agent'` — or `/run-workflow` for the whole plan.
+**Usage:** `bash "<PLUGIN_ROOT>/scripts/agent-session.sh" execute-phase-agent`
+— or `/run-workflow` for the whole plan. Both launch fixed `gpt-5.6-sol` inside
+Codex `workspace-write`; do not hand-launch this worker with a lower model.
 
 **Non-negotiables:**
 - **No questions.** Never Codex user-input prompt — there is nobody here who can answer. Decide, and document the decision in the plan.
@@ -76,7 +78,15 @@ Green signal = test suite + linter scoped to the touched files. Both must pass.
 
 **An independent verifier runs only where it earns its keep**: the phase's `Pattern:` is `new-pattern`, or the phase is marked `sonnet` (legacy plans only — sonnet left the palette). Otherwise skip it — you already check your own work as you go, and a second review pass on a well-specified phase mostly re-litigates settled decisions.
 
-When it does run: ONE `phase-verifier` subagent (Codex subagent; fallback: a general-purpose subagent told to stay read-only), given the phase objective and `Done:`, its `Pattern:` example, **only this phase's touched files**, and — where the plan carries them — the phase's contract-test paths, plan copy and in-tree copy. Findings: **MECHANICAL** (real bug, wrong API, divergence from the pattern) → fix, re-run the signal, same 3-attempt budget. **JUDGMENT** (design trade-off, human call) → do not fix; record as `> Review:`. Never blocks `[x]`.
+When it does run: load `<PLUGIN_ROOT>/judges/phase-verifier.md` and give that
+shipped prompt to ONE fresh read-only Codex subagent, together with the phase
+objective and `Done:`, its `Pattern:` example, **only this phase's touched
+files**, and — where the plan carries them — the phase's contract-test paths,
+plan copy and in-tree copy. Never invoke a bare judge name: Codex packages these
+as prompt files, not discoverable named agents. Findings: **MECHANICAL** (real
+bug, wrong API, divergence from the pattern) → fix, re-run the signal, same
+3-attempt budget. **JUDGMENT** (design trade-off, human call) → do not fix;
+record as `> Review:`. Never blocks `[x]`.
 
 ## Step 6: Record, commit, stop
 

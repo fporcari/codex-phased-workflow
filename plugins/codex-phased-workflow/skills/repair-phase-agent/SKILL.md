@@ -7,7 +7,10 @@ description: Repair the first failed [!] phase unattended — no questions, one 
 
 Base skill: repair-phase. Read `<PLUGIN_ROOT>/skills/repair-phase/SKILL.md` and follow it — locating the failure, diagnosing from scratch, the fix-and-converge budget, the unconditional `phase-verifier` pass and the outcome formats all live there. This file carries only what changes when nobody is in the room.
 
-**Launched by `/run-workflow`** (at most once per phase), or `codex exec '/wf:repair-phase-agent'`.
+**Launched by `/run-workflow`** (at most once per phase), or through
+`bash "<PLUGIN_ROOT>/scripts/agent-session.sh" repair-phase-agent`. Both use
+fixed `gpt-5.6-sol` inside Codex `workspace-write`; never hand-launch a lower
+implementation model.
 
 ## What the environment changes
 

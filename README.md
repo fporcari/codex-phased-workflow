@@ -16,7 +16,7 @@ contexts, and consolidates the workflow only after a whole-diff quality gate.
 
 - `.phased/active/<slug>/plan.md`, notes, verification, mockups, tests, and logs;
 - phase states `[ ]`, `[>]`, `[x]`, `[!]`, and `[~]`;
-- note fields such as `Done`, `Files`, `Issue`, `Attempted`, `Repaired`, and `Blocked`;
+- note fields such as `Done`, `Files`, `Issue`, `Attempted`, `Applied`, `Repaired`, and `Blocked`;
 - `wf/<slug>` branches, a plan-first commit, and one commit per phase;
 - portable `opus`/`fable` model labels in plans.
 
@@ -66,12 +66,12 @@ flowchart TB
 
 ### Known coordination gap
 
-The Codex version does not pretend that an ephemeral CLI worker can talk live to
-the desktop foreman. It cannot do so through a documented portable channel
-today. The fallback is deliberately stronger than an inferred conversation:
-the worker writes the phase marker, structured notes, log, and commit; the
-foreman reads those artifacts and resumes from them. This is also what makes a
-handoff across products or machines reliable.
+An ephemeral CLI worker does not address the desktop foreman directly. The
+launcher holds a plan-defect claim on an owner-private file return leg while
+the supervising task is live; without that inspector, timeout falls through to
+fresh repair. Every outcome still lands first as a marker, structured notes,
+log, and commit. This is what makes a handoff across products or machines
+reliable.
 
 Within one Codex task, ordinary subagents still communicate live. A future
 optional relay can add live dialogue for independent `codex exec` workers, but
@@ -87,6 +87,9 @@ codex plugin add codex-phased-workflow@codex-phased-workflow
 
 Restart Codex after installation. The plugin exposes planning, execution,
 resume, repair, quality-check, finalization, issue, and pull-request skills.
+The optional `dashboard` skill opens an authenticated localhost view that reads
+the same state and queues proposals back to its owning Codex task; it is never a
+workflow precondition. See [the wfdash guide](docs/wfdash.md).
 See [the colleague installation guide](docs/INSTALL.md) for first install,
 updates, verification, and Claude handoff instructions.
 
@@ -102,6 +105,9 @@ updates, verification, and Claude handoff instructions.
 At any point, open the same repository in Claude Code and run its
 `resume-workflow`; the inverse handoff works the same way.
 
+For a release-by-release account of the Claude baseline and each Codex-native
+adaptation, see [the parity inventory](docs/PARITY.md).
+
 ## Safety and quality
 
 - Autonomous workers use Codex `workspace-write` without automatic escalation approval, never a
@@ -110,7 +116,8 @@ At any point, open the same repository in Claude Code and run its
 - External effects such as merges, deploys, publication, and destructive
   cleanup remain outside autonomous authority.
 - Every plugin skill and manifest is validated in CI, alongside protocol
-  fixtures originating from both runtimes.
+  fixtures originating from both runtimes, launcher interruption/consult/stop
+  scenarios, dashboard concurrency and ownership, and its HTTP perimeter.
 
 ## Development
 

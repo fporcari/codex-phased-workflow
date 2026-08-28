@@ -42,6 +42,10 @@ and the table below are the canon of what to say, not a page to paste.
   the two cases above.
 - **Lost, or resuming after days** — `/wf:resume-workflow` in a fresh chat:
   it needs the branch, nothing else, and it names the next command.
+- **Want a live local view** — `/dashboard` opens the optional authenticated
+  plan/roadmap/log view and serves proposals queued for this Codex task. The
+  textual `/wf:resume-workflow` report remains the complete fallback; the page
+  is never required to continue.
 - **The phases feel incompatible with each other** — or the plan predates
   contract tests and you want the verdict instead of the suspicion →
   `/wf:doctor`: coherence audit, contract-test integrity, and a blind
@@ -67,6 +71,7 @@ and the table below are the canon of what to say, not a page to paste.
 | `/wf:execute-phase-agent` | one phase, unattended — `/wf:run-workflow`'s worker |
 | `/wf:repair-phase-agent` | repair the first `[!]` phase, unattended |
 | `/wf:resume-workflow` | where the work stands, and which command takes it forward |
+| `/dashboard` | optional authenticated local state view and task-owned proposal queue |
 | `/wf:doctor` | is the work still coherent with the plan — audit, test integrity, blind retro-fit |
 | `/wf:quality-check` | QA pass, naming review, whole-diff review — stamps the plan |
 | `/wf:quality-check-agent` | the read-only quality verification, in a clean sub-session |

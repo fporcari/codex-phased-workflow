@@ -120,9 +120,23 @@ Then: *"Branch pushed. Launch `/pull-request` to open the PR to `<parent>`."*
 
 **Commit only** → nothing else happens; the workflow branch holds everything.
 
-Whichever path ran: send the foreman the closing `workflow finalized` message per `foreman.md` → *The foreman* — best-effort, phrased per the reporting register. `list_sessions` excludes the current session, so when this chat IS the foreman the title lookup finds nothing and the skip is automatic. A close that ran without a quality stamp says so here too, in one line.
+Whichever path ran: send the foreman the closing `workflow finalized` message
+per `foreman.md` → *The foreman* — best-effort, phrased per the reporting
+register. Resolve an explicit Codex task through the available task-listing
+tool; when this task is the foreman, skip the self-message, and when identity is
+not discoverable, do not guess. A close that ran without a quality stamp says
+so here too, in one line.
 
-After the first two, offer to delete the workflow branch and its worktree (default: yes) — `git worktree remove .claude/worktrees/<slug>` + `git branch -D <workflow-branch>`. **Unless `.phased/roadmap.md` still lists unstarted macro-phases:** then keep the branch, say why, and remind the user *"The roadmap has further macro-phases. Next step: a new chat and `/write-workflow` to detail the next one — with the hindsight of the one just committed."* If `IN_WORKTREE`, remind the user that the worktree itself is plain git: `git worktree list` shows the stale ones, `git worktree remove <path>` clears them.
+After the first two, offer to delete the workflow branch and its worktree
+(default: yes). Resolve the exact checkout path from `git worktree list
+--porcelain`; never assume a Claude- or Codex-owned directory. Then use
+`git worktree remove <resolved-path>` and `git branch -D <workflow-branch>` only
+after the user accepts. **Unless `.phased/roadmap.md` still lists unstarted
+macro-phases:** then keep the branch, say why, and remind the user *"The roadmap
+has further macro-phases. Next step: a new chat and `/write-workflow` to detail
+the next one — with the hindsight of the one just committed."* If
+`IN_WORKTREE`, remind the user that the worktree itself is plain git: `git
+worktree list` shows stale ones and `git worktree remove <path>` clears them.
 
 ## Rules
 
