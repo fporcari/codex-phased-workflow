@@ -14,7 +14,7 @@ session API:
   active/<slug>/
     plan.md
     notes.md
-    foreman.json
+    foreman.json           # Channel: relayed and legacy plans only
     verify.md
     mockups/
     tests/
@@ -34,7 +34,17 @@ session API:
 
 Known durable note fields are `Done`, `Files`, `Issue`, `Attempted`, `Applied`, `Repaired`,
 `Repair attempted`, `Repair started`, `Review`, `Blocked`, `WIP`, `Testing`,
-`In execution since`, `Verify`, and `Verified`.
+`In execution since`, `Verify`, `Verified`, and `Batches`.
+
+`Mode:` and `Channel:` are orthogonal plan headers. `Mode:` remains
+`interactive|autonomous`; optional `Channel:` is `in-chat|relayed` and decides
+where questions, outcomes, and re-planning travel. A missing `Channel:` keeps
+legacy relayed behavior. `Mode: autonomous` with `Channel: in-chat` is invalid.
+
+`> Batches: 1 <label> | 2 <label> | …` is an optional planned subdivision of
+one phase. Each batch may land as
+`wf(phase N): partial — batch M/K <label>` without a `WIP:` note or handover.
+The phase still owes one `Done:` and one final `wf(phase N): <title>` commit.
 
 After the plan commit, a phase may change its marker and append durable `>`
 notes. The foreman owns `Done:`, authored `Verify:`, `Pattern:`/`Pattern
@@ -62,7 +72,8 @@ Codex `model_reasoning_effort`.
 2. The receiving host runs `resume-workflow` and validates the plan.
 3. Never translate markers, rename note fields, or rewrite model labels merely
    because the runtime changed.
-4. `foreman.json` may update its `host`; opaque session ids are never portable.
+4. On relayed and legacy plans, `foreman.json` may update its `host`; opaque
+   session ids are never portable. In-chat plans do not create the file.
 5. A live cross-session message is advisory. The committed plan is authoritative.
 
 ## Runtime transport

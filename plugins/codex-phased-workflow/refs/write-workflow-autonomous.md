@@ -105,6 +105,7 @@ The cycle: `/run-workflow` → `/quality-check` → `/finalize-workflow` (bounde
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
 Mode: autonomous
+Channel: relayed
 Must not break: <one line per contract owned by later work — contracts.md → *Must not break:*; omit only when no roadmap and no known consumer>
 
 ## Objective

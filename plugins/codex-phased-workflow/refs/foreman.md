@@ -1,8 +1,10 @@
 # Foreman protocol
 
-The foreman is the chat that holds the user's decisions and supervises the
-workflow. Worker sessions own one phase; the foreman owns scope, sequencing,
-re-phasing, plan defects, and the final user-facing account.
+On `Channel: relayed`, the foreman is the task that holds the user's decisions
+and supervises the workflow. Worker tasks own one phase; the foreman owns scope,
+sequencing, re-phasing, plan defects, and the final user-facing account. On
+`Channel: in-chat` the role is co-located with execution and this file is not a
+relay to create or load.
 
 This file defines a portable file-backed protocol. Cross-chat messaging is an
 optional acceleration, never the source of truth.
@@ -27,6 +29,16 @@ session id as durable state: ids do not cross products or machines.
 
 Workers do not need to edit `foreman.json`. Their durable message is the phase
 marker and its notes in `plan.md`, plus `notes.md` and logs when applicable.
+
+The foreman commands; it does not execute phases. Two exceptions are intended:
+launching `/run-workflow`, which supervises external workers, and a bounded QA
+correction after every phase is `[x]` (`/quality-check` → *QA fixes*). With no
+phase left to command, a one-sentence correction does not buy another phase's
+ceremony.
+
+The foreman's model is a written hint like a phase's `Run:` line. For Codex,
+suggest `gpt-5.6-sol` with high reasoning: its work is judgment, user-facing
+prose, consults, and the bounded QA-fix exception. Nothing enforces the hint.
 
 ## Channel floors
 
@@ -85,11 +97,22 @@ the in-tree copy, keeping them byte-identical. Green `Done:` flips the phase to
 rewrite that grows beyond the declaration, or the apply deadline expiring
 restores the touched files, records a red outcome, and proceeds to fresh repair.
 
-An unattended launcher holds briefly for the decision and, on apply, for the
-outcome. No live reply follows the documented timeout to repair; it never
-silently invents a requirement. A granted stop leaves the tree free for the
-foreman to clarify with the user and amend both plan and contract tests in a
-separate `wf:` commit before relaunching.
+The unattended launcher holds for the decision with no default deadline. The
+foreman first checks the claim against the code it names and puts one question
+to the user with claim, evidence, and its own verdict. No reply leaves the run
+holding; a stop request during the hold ends it. Only an explicitly configured
+`RUN_WORKFLOW_CONSULT_TIMEOUT` hands the claim to repair without advice.
+Answers are `plan-defect: repair`, `plan-defect: apply`, or `plan-defect: stop`
+(the launcher also accepts the bare verb, case-insensitively). Invalid answers
+leave the gate open.
+
+On `apply`, the supervisor changes exactly the declared before-text →
+after-text pair in both contract copies, re-runs `Done:`, and reports the
+outcome. A missing exact edit, red result, expired explicit apply timeout, or
+an edit that grows into a rewrite restores the touched files and proceeds to
+fresh repair. A granted stop leaves the tree free for the foreman to clarify
+with the user and amend both plan and contract tests in a separate `wf:` commit
+before relaunching.
 
 ## Notes ledger
 

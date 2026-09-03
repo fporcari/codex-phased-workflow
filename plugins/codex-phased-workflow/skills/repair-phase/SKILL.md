@@ -50,7 +50,7 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 ## Step 3: Diagnose from scratch
 
 1. Re-read the phase objective, `Details:`, `Done:` and its `Pattern:` example.
-2. **An `> Issue:` carrying `plan-defect claim` is itself the thing under test.** The child judged the plan unimplementable, and that judgment reached you unverified — in the first field run both such claims dissolved under fresh eyes (the contract was implementable in-dialect both times). Your first job is trying to satisfy the contract AS WRITTEN; the contract stays read-only either way (`refs/contracts.md` → *Contract tests*). Only a claim that survives your own attempt ends the repair `[!]` with `> Repair attempted: plan-defect confirmed — <what you tried, why the contract truly cannot hold>` — the foreman fixes plan and tests from there, never you.
+2. **An `> Issue:` carrying `plan-defect claim` is itself the thing under test.** The child judged the plan unimplementable, and that judgment reached you unverified. Try to satisfy the contract AS WRITTEN; the contract stays read-only (`refs/contracts.md` → *Contract tests*). Satisfying it has a cost bound: a green result that needs surface outside the phase's `Files:` and failed phase's `> Files:` — a new shim, module, or repository convention — or that Step 4's verifier flags as a JUDGMENT finding against the contract's own premise confirms the claim at a price the plan never bought. That outcome, like a claim surviving an honest attempt, remains `[!]` as *Plan-defect confirmed*. Whoever owns the plan fixes plan and tests; the repair never does.
 3. Reproduce the failure and confirm the recorded error signature still holds.
 4. **Establish whose failure it is.** The failed phase committed its own work as `wf(phase N): FAILED — <title>`, so its boundaries are exact: `git show --stat HEAD` is everything it changed, and `HEAD^` is the tree before it started. Re-run the green signal at `HEAD^` — a failure that reproduces there is **not this phase's**. Don't patch it here: keep the phase `[!]` with a `> Repair attempted:` note naming the real culprit, so the human fixes the right thing.
 
@@ -69,6 +69,9 @@ agents. MECHANICAL findings are fixed within the same budget; JUDGMENT is
 recorded as `> Review:`. Unlike a normal phase, this runs **unconditionally**:
 the code already failed once and was patched under a bounded budget, which is
 the case where a fresh independent pass reliably pays.
+On a plan-defect repair, a JUDGMENT finding against the contract's premise
+trips the cost bound and ends the repair `[!]`; it never closes `[x]` with a
+review asking the human to ratify a workaround already committed.
 
 ## Step 5: The verdict is yours
 
@@ -77,9 +80,9 @@ Show what it turned out to be, what changed, and which signal is green that was 
 On your ok, record the outcome for the way in:
 
 - **Came in `[!]`** → the phase closes: `[x]` + `> Repaired:`, as below.
-- **Came in `[>]`** → the phase **goes back to `[>]`** carrying `> Repaired:` and its existing `> WIP:` note, and this task sends the outcome to the phase task (`wf:<slug>:phase-N`, resolved through the available Codex task-listing tool — `foreman.md` → *The foreman*, including the rule that a tool you have not loaded is not a tool that is absent) and tells you to carry on there. It does not touch anything else: the phase is not finished, and finishing it is that task's job.
+- **Came in `[>]`** → the phase **goes back to `[>]`** carrying `> Repaired:` and its existing `> WIP:` note, and this task returns the outcome to the conversation that owns the phase — its phase task on relayed, the workflow conversation on in-chat. It does not touch anything else: finishing remains that conversation's job.
 
-**One chat is one attempt.** If the repair eats this whole context without a green signal, the problem is not a bug: leave `[!]` + `> Repair attempted:`, send the foreman the `blocked` line (`foreman.md` → *The foreman*), and say plainly that this belongs in a re-planning conversation, not in another repair.
+**One chat is one attempt.** If the repair eats this whole context without a green signal, leave `[!]` + `> Repair attempted:` and route `blocked` per `refs/phase-execution.md`: to the foreman on relayed, to the user at the gate on in-chat. Say plainly that this belongs in re-planning, not another repair.
 
 ## The outcome formats
 
@@ -97,6 +100,14 @@ On your ok, record the outcome for the way in:
   > Repair attempted: <ISO timestamp> — <updated diagnosis: what you ruled out, what the human should look at first>
 ```
 
+**Plan-defect confirmed** — use the same `[!]` record, with
+`> Repair attempted: <ISO timestamp> — plan-defect confirmed — <what you tried;
+why the contract cannot hold as written, or what making it hold would cost>`.
+Restore every source file changed by the repair to the failed phase commit,
+using the explicit touched paths, before writing the note. The workaround lives
+in the note and nowhere in the tree. Commit only the plan outcome as
+`wf(phase N): plan defect confirmed — <one line>`.
+
 **The `> Repair started:` marker goes, whatever the outcome** — it described a repair in progress, and the outcome supersedes it: remove it in the same edit that records the result, on a phase handed back `[>]` too. A marker left behind describes a chat that no longer exists.
 
 Either way, commit — the plan is tracked, and leaving the tree dirty would block the next phase's baseline:
@@ -107,4 +118,4 @@ git add -A && git commit -q -m "wf(phase N): repaired — <root cause>"
 
 or, on a failed repair, `wf(phase N): repair attempted — <diagnosis>`.
 
-Print `✓ Phase N repaired: <root cause>` or `✗ Phase N repair failed: <reason> — human review required`, then stop. A phase handed back `[>]` prints the same first line plus where to go: *"back to the phase chat — it has the verdict."*
+Print `✓ Phase N repaired: <root cause>`, `✗ Phase N repair failed: <reason> — human review required`, or `✗ Phase N plan defect confirmed: <one line> — the plan's author decides`, then stop. A phase handed back `[>]` prints the same first line plus where to go: *"back to the phase chat — it has the verdict."*

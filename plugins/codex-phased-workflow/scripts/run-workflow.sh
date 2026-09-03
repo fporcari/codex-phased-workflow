@@ -7,7 +7,7 @@ plugin_root="$(cd "$script_dir/.." && pwd)"
 selector="$script_dir/next-phase.py"
 phase_model="gpt-5.6-sol"
 session_timeout="${RUN_WORKFLOW_SESSION_TIMEOUT:-3600}"
-consult_timeout="${RUN_WORKFLOW_CONSULT_TIMEOUT:-600}"
+consult_timeout="${RUN_WORKFLOW_CONSULT_TIMEOUT:-}"
 apply_timeout="${RUN_WORKFLOW_APPLY_TIMEOUT:-900}"
 
 numeric_or_exit() {
@@ -20,7 +20,9 @@ numeric_or_exit() {
 }
 
 numeric_or_exit session-timeout "$session_timeout"
-numeric_or_exit consult-timeout "$consult_timeout"
+if [[ -n "$consult_timeout" ]]; then
+  numeric_or_exit consult-timeout "$consult_timeout"
+fi
 numeric_or_exit apply-timeout "$apply_timeout"
 
 plan="$(python3 "$selector" --resolve)" || exit 2
@@ -128,6 +130,43 @@ wait_for_file() {
     elapsed=$((elapsed + 1))
   done
   return 1
+}
+
+consult_result=""
+wait_for_consult() {
+  local path="$1"
+  local limit="$2"
+  local stop_path="$3"
+  local number="$4"
+  local elapsed=0
+  local answer
+  consult_result=""
+  while true; do
+    if [[ -s "$path" ]]; then
+      answer="$(head -1 "$path" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+      rm -f "$path"
+      answer="${answer#plan-defect:}"
+      case "$answer" in
+        stop|repair|apply)
+          consult_result="$answer"
+          return 0
+          ;;
+        *)
+          echo "EVENT: consult-answer-invalid:$number:${answer:-empty}"
+          ;;
+      esac
+    fi
+    if [[ -f "$stop_path" ]]; then
+      rm -f "$stop_path"
+      consult_result="stop-request"
+      return 0
+    fi
+    if [[ -n "$limit" ]] && (( elapsed >= limit )); then
+      return 1
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
 }
 
 run_codex() {
@@ -277,13 +316,22 @@ while true; do
 
       if phase_has_claim "$number"; then
         echo "EVENT: phase-needs-foreman:$number"
-        answer="$(wait_for_file "$consult_answer" "$consult_timeout" || true)"
+        if wait_for_consult "$consult_answer" "$consult_timeout" \
+            "$stop_request" "$number"; then
+          answer="$consult_result"
+        else
+          answer=""
+        fi
         case "$answer" in
-          plan-defect:\ stop|stop)
+          stop)
             echo "EVENT: run-end:plan-defect-stop:phase=$number"
             exit 1
             ;;
-          plan-defect:\ apply|apply)
+          stop-request)
+            echo "EVENT: run-end:stopped-by-request:$landed/$initial_unfinished"
+            exit 0
+            ;;
+          apply)
             echo "EVENT: phase-apply-wait:$number"
             outcome="$(wait_for_file "$apply_outcome" "$apply_timeout" || true)"
             if [[ "$outcome" == "green" ]] &&
@@ -294,10 +342,7 @@ while true; do
             fi
             echo "EVENT: phase-apply-fell-through:$number"
             ;;
-          plan-defect:\ repair|repair|"")
-            ;;
-          *)
-            echo "EVENT: consult-answer-invalid:$number:$answer"
+          repair|"")
             ;;
         esac
       fi

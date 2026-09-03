@@ -13,6 +13,8 @@ terminal, then opens the one-shot URL in Codex's browser panel.
 - the same visual shell, navigation, hierarchy, phase panes, plan renderer,
   creation dialog, and proposal controls as the Claude dashboard;
 - the roadmap, local and branch-resident plans, and the latest closed plan;
+- a conditional **Done** tab for finalized workflows not declared by the
+  current roadmap; closed macros in the current roadmap stay in **Plan**;
 - every phase marker, portable tag, run hint, note, and human `Verify:` step;
 - the selector's exact five-way recommendation;
 - `wf:` lifecycle commits, durable worker logs, and an interrupted launcher's
@@ -22,6 +24,11 @@ terminal, then opens the one-shot URL in Codex's browser panel.
 Selecting a phase opens its verbatim plan block. Verification rows are a read
 of the plan, not a second checklist: nothing the browser ticks can close a
 phase.
+
+Plan and roadmap text are cached for reading stability, then invalidated when
+their own filesystem mtime changes. The existing text stays visible until the
+replacement fetch lands; branch-only plan text has no local mtime and retains
+the stable one-fetch behavior.
 
 ## Proposal buttons
 

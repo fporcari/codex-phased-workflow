@@ -63,8 +63,8 @@ Per `contracts.md` → *Contract tests*: for each `[x]` phase with
 `tests/phase-N/`, check the in-tree copies against the plan copies —
 executable tests byte-identical; skeletons with names and every
 `wf:contract:` line surviving verbatim, no red body left — then re-run them.
-A divergence with no foreman decision in `notes.md`, or a test gone red, is
-a finding. Pending phases: their plan copies exist and are red by
+A divergence with no covering decision in `notes.md`, or a test gone red, is
+a finding — the record is what the gate reads on either channel. Pending phases: their plan copies exist and are red by
 construction — nothing to run yet.
 
 ## Step 4: Blind retro-fit (where the plan has no contract tests)
@@ -119,16 +119,18 @@ finding, classified:
 - **RECORD** — the plan's bookkeeping is wrong (a `> Files:` note diverging
   from its commit): `/resume-workflow` territory.
 - **COHERENCE** — a pending premise broken, or a red retro-test on a `[x]`
-  phase: re-planning territory — remedy phases in the tail, via
-  `/resume-workflow` in the foreman chat.
-- **INTEGRITY** — a contract test edited outside the foreman road: name the
-  edit; the decision on it is the foreman's.
+  phase: re-planning territory — remedy phases in the tail via
+  `/resume-workflow`, in the foreman task on relayed and legacy plans, or this
+  conversation on in-chat.
+- **INTEGRITY** — a contract test edited outside the sanctioned road: name the
+  edit; the decision belongs to the foreman on relayed or the user at the gate
+  on in-chat.
 
 Append the same findings to `notes.md` under a `## Doctor <ISO date>`
 heading, committed (`wf: doctor — findings`): the chat dies, the file is
 what `/resume-workflow` and finalize read. Healthy plan → say so in one
 line and stop; no commit, no note.
 
-Close with the next step, always: `/resume-workflow` in the foreman chat for
-re-planning, `/repair-phase` only for a genuinely machine-red `Done:`,
+Close with the next step, always: `/resume-workflow` for re-planning on the
+configured route, `/repair-phase` only for a genuinely machine-red `Done:`,
 nothing when healthy.

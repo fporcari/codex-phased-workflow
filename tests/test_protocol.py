@@ -29,7 +29,7 @@ def run_selector(selector: Path, *arguments: str, cwd: Path | None = None) -> su
 class ProtocolCompatibilityTest(unittest.TestCase):
     def test_parity_inventory_accounts_for_every_baseline_release(self) -> None:
         expected = set(
-            (FIXTURES / "claude-6.28.7-releases.txt").read_text().splitlines()
+            (FIXTURES / "claude-6.34.0-releases.txt").read_text().splitlines()
         )
         inventory = (ROOT / "docs" / "PARITY.md").read_text()
         actual = set(re.findall(r"^\| (\d+\.\d+\.\d+) \|", inventory, re.MULTILINE))
@@ -43,6 +43,7 @@ class ProtocolCompatibilityTest(unittest.TestCase):
         self.assertEqual(payload["next"], 2)
         self.assertEqual(payload["recommendation"], "next: 2")
         self.assertEqual(payload["meta"]["mode"], "autonomous")
+        self.assertIsNone(payload["meta"].get("channel"))
         self.assertEqual(payload["phases"][1]["run"], None)
         self.assertEqual(payload["phases"][1]["blocked_by"], [])
 
@@ -93,6 +94,40 @@ class ProtocolCompatibilityTest(unittest.TestCase):
         result = run_selector(SELECTOR, "--validate", str(path))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("unknown note field 'Applied'", result.stdout)
+
+    def test_channel_and_batches_are_portable_and_validated(self) -> None:
+        plan = (FIXTURES / "codex-originated" / "plan.md").read_text()
+        plan = plan.replace(
+            "  - Pattern reference:",
+            "  > Batches: 1 parser | 2 renderer\n  - Pattern reference:",
+            1,
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "plan.md"
+            path.write_text(plan)
+            result = run_selector(SELECTOR, "--validate", str(path))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertNotIn("unknown note field", result.stdout)
+            payload = json.loads(run_selector(SELECTOR, "--json", str(path)).stdout)
+            self.assertEqual(payload["meta"]["channel"], "relayed")
+
+            path.write_text(plan.replace("Channel: relayed", "Channel: in-chat"))
+            result = run_selector(SELECTOR, "--validate", str(path))
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("Mode: autonomous with Channel: in-chat", result.stdout)
+
+            path.write_text(plan.replace("Channel: relayed", "Chanel: relayed"))
+            result = run_selector(SELECTOR, "--validate", str(path))
+            self.assertEqual(result.returncode, 1)
+            self.assertIn('field is "Channel:"', result.stdout)
+
+            path.write_text(plan.replace(
+                "> Batches: 1 parser | 2 renderer",
+                "> Batches: parser | 3 renderer",
+            ))
+            result = run_selector(SELECTOR, "--validate", str(path))
+            self.assertEqual(result.returncode, 0)
+            self.assertIn('body is not "1 <label> | 2 <label> | ..."', result.stdout)
 
     def test_transport_is_stable_and_repo_keyed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -278,6 +313,31 @@ class ProtocolCompatibilityTest(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, body)
+
+    def test_recent_claude_doctrine_is_present_with_codex_adaptations(self) -> None:
+        common = (PLUGIN / "refs" / "common.md").read_text()
+        contracts = (PLUGIN / "refs" / "contracts.md").read_text()
+        execution = (PLUGIN / "refs" / "phase-execution.md").read_text()
+        foreman = (PLUGIN / "refs" / "foreman.md").read_text()
+        write = (PLUGIN / "skills" / "write-workflow" / "SKILL.md").read_text()
+        repair = (PLUGIN / "skills" / "repair-phase" / "SKILL.md").read_text()
+        quality = (PLUGIN / "skills" / "quality-check" / "SKILL.md").read_text()
+        run = (PLUGIN / "skills" / "run-workflow" / "SKILL.md").read_text()
+
+        self.assertIn("Channel: in-chat", contracts)
+        self.assertIn("Routing a decision", execution)
+        self.assertIn("Planned batches", execution)
+        self.assertIn("partial — batch M/K", execution)
+        self.assertIn("decision boundaries", write)
+        self.assertIn("after the mode answer", write)
+        self.assertIn("exactly ONE **phase commit**", common)
+        self.assertIn("Satisfying it has a cost bound", repair)
+        self.assertIn("Plan-defect confirmed", repair)
+        self.assertIn("QA fixes", quality)
+        self.assertIn("gpt-5.6-sol", foreman)
+        self.assertIn("high reasoning", foreman)
+        self.assertIn("no default deadline", run)
+        self.assertIn("task's workspace", write)
 
 
 if __name__ == "__main__":

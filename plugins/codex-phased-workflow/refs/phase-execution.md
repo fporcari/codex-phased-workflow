@@ -55,9 +55,9 @@ here.
 *Contract tests*): copy `tests/phase-N/` verbatim into the repo's test tree
 before implementing — red is the starting state, green is part of `Done:`.
 A skeleton's body is yours to write; everything else is read-only here, and
-a test that cannot pass as written goes up, never under the knife —
-`clarify?` in interactive mode, `[!]` naming the test in unattended mode,
-per the single source.
+a test that cannot pass as written goes up, never under the knife — routed per
+*Routing a decision* in interactive mode, `[!]` naming the test in unattended
+mode, per the single source.
 
 ## Record the outcome
 
@@ -110,13 +110,35 @@ reads the file, not the memory of a chat that no longer exists.
 
 ## Notify the foreman
 
-After the phase commit, send the workflow's foreman chat one message with the
+The outcome's road is the one *Routing a decision* names. On the relayed road,
+send the workflow's foreman task one message after the phase commit with the
 outcome — done, FAILED, or blocked — in the exact format and by the exact
 mechanics of `refs/foreman.md` → *Sending to the foreman*. Read that section
 when you reach this step, not at start — it is the only part of the foreman
-layer an executing session needs. Best-effort: no
-`foreman.json`, no messaging tool, delivery refused → skip in silence. The
-notification never fails a phase and is never worth a retry loop.
+layer an executing session needs. Best-effort: no `foreman.json`, no messaging
+tool, delivery refused → skip in silence. The notification never fails a phase
+and is never worth a retry loop. The skip is the message's alone — the record
+is written either way, on both roads.
+
+## Routing a decision
+
+Three things travel out of a phase, and the plan's `Channel:` picks the road
+for all three (`contracts.md` → *The channel*). This is the single source of
+the fork — the skills and the sections below cite it, they never restate it.
+
+| what travels | `Channel: relayed`, and legacy (no `Channel:`) | `Channel: in-chat` |
+|---|---|---|
+| a **question** the plan's author owns | up first as `clarify?` to the foreman (`refs/foreman.md`: precondition, reply paths, one-round cap); the user confirms at the gate what it decided | put to the user at that same gate, batched with the rest, before the work proceeds |
+| an **outcome** — done, FAILED, blocked, closed short, result rejected | one message to the foreman task, best-effort (*Notify the foreman*) | reported at the gate, in this conversation; no message, and nothing waits for one |
+| a **re-planning** — the remainder of a short close, the phases after a rejected result | the foreman sizes it; the child never appends phases | sized with the user at that same gate, and the plan edit committed as usual |
+
+In every row the record is owed on both roads: `notes.md` under the phase's
+`## Phase N`, and the plan. The message belongs to the relayed road alone, and
+a rule naming the foreman without naming its road is a relay in-chat cannot
+escape. The rule that a phase task executes and does not supervise belongs to
+the relayed road: it exists because two tasks must not both command. On
+`Channel: in-chat` there is one conversation, so supervision and execution are
+co-located and `/execute-phase` continues there.
 
 ## WIP checkpoints
 
@@ -153,6 +175,29 @@ trusting the story. Free prose is what made resume unreliable: a fresh
 session reading vague prose reinterprets, and reinterpretation is how work
 gets redone or contradicted.
 
+## Planned batches
+
+A phase carrying `> Batches:` was sized as one decision whose diff is too
+large to read as one unit (`contracts.md` declares the field). This is the
+single source of its format:
+
+```
+> Batches: 1 <label> | 2 <label> | … | K <label>
+```
+
+Numbered from 1, one short label each, pipe-separated. A batch is not a
+checkpoint: a checkpoint interrupts and therefore needs both a partial commit
+and the structured `> WIP:` note. A batch does not interrupt: make the partial
+commit and continue in the same task, with no `> WIP:` note and no handover.
+
+```bash
+git add -A && git commit -q -m "wf(phase N): partial — batch M/K <label>"
+```
+
+If the task does stop after a batch, that stop is an ordinary checkpoint and
+gets the `> WIP:` note then, naming the batch it stopped after. The note marks
+the interruption, never the boundary.
+
 ## Handing a defect to repair
 
 A defect found mid-phase is not the phase chat's to chase. Debugging is the
@@ -176,7 +221,8 @@ wrong — their account, not the phase chat's diagnosis — records it as
 repair lasts, and hands the phase back `[>]` with a `> Repaired:` note when
 the human says it is fixed. **One chat is one attempt**: a repair that eats a
 whole context without a green signal is not a bug but a plan problem, and it
-goes to the foreman as `blocked` rather than to a second repair.
+goes out as `blocked` — to the foreman on the relayed road, to the user here on
+`Channel: in-chat` — rather than to a second repair.
 
 ## When the phase outgrows its chat
 
@@ -203,14 +249,15 @@ mechanics:
    is the precondition for `[x]` to keep meaning what it says.
 2. **Close through `/close-phase`** like any other phase: naming review,
    `Done:` gate re-run — it passes now, honestly — `[x]`, ONE phase commit.
-3. **Tell the foreman it closed short**, naming what remains in one line, so
-   the plan grows the phases that carry it. What remains also goes to
-   `notes.md` under the phase's `## Phase N`: a remainder that lives only in
-   a message dies with the message.
+3. **Report that it closed short**, naming what remains in one line, so the
+   plan grows the phases that carry it — the outcome row of *Routing a
+   decision*. What remains also goes to `notes.md` under the phase's `## Phase
+   N` on both roads: a remainder that lives only in a message dies with it.
 
-The remainder is re-planned by the foreman, never appended by the child:
-sizing the work is the job the whole protocol gives that chat, and the phase
-that just overran is evidence about the sizing, not only about itself.
+The remainder is a re-planning and takes that row's road: the foreman sizes it
+and the child never appends phases; where there is no relay it is sized with
+the user at this same gate, and the plan edit is committed as usual. Either
+way sizing belongs to whoever owns the plan, not to the phase that overran.
 
 **Resuming a `[>]` phase** — the calling skill decides *whether* to take
 it over; this is *how*: read the `> WIP:` note, run
@@ -235,7 +282,13 @@ be able to say *stop*, rather than discover the traces afterwards.
 A `[>]` phase with no `> WIP:` note and no `partial` commit carries no
 evidence — and if its chat is gone too, reset it to `[ ]` with
 `> Execution interrupted, phase available for retry` rather than guessing
-what a dead session did. Uncommitted changes with nothing to explain them are
+what a dead session did.
+
+A planned batch is not an interrupted phase. On a phase carrying `> Batches:`,
+partial commits are expected work in progress, so the evidence question is
+which batches the commits cover. What still says interrupted is what always
+did: no live task and no `> WIP:` note to say where it stopped. Uncommitted
+changes with nothing to explain them are
 never guessed at either: report them and ask.
 
 Checkpoints are not phase commits: `/finalize-workflow` squashes them with
@@ -261,14 +314,14 @@ the skills cite it, they never restate it:
 the checks pass → close; something is off and this phase can fix it →
 ordinary work on the open phase, commit, present again; the result is wrong
 at the root → the `Done:` passed, so the phase closes `[x]` carrying the
-verdict as `> Review:`, the foreman gets the `result rejected` line, and the
-phases that have not run are re-planned through `/resume-workflow`.
+verdict as `> Review:`. The `result rejected` outcome and the re-planning of
+the phases that have not run both take their rows in *Routing a decision*.
 **Never `[!]` on a person's judgment** — `common.md` → *Failure and repair
 notes* has both reasons: it aims an automatic repair at green code, and the
 work itself is usually sound.
 
 **Nothing is closed and nobody is told before the person has answered.** The
-`[x]`, the phase commit and the foreman message all belong on the far side of
+`[x]`, the phase commit and the outcome report all belong on the far side of
 this gate: a phase reported done while its checks are still unrun is the
 failure the gate exists to prevent.
 

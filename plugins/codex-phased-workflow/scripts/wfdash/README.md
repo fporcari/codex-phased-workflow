@@ -4,9 +4,12 @@
 JSON produced by `next-phase.py` with roadmap state, `wf:` commits, committed
 worker logs, and the current launcher's owner-private external log.
 
-The HTML/CSS shell is copied from the Claude 6.28.7 dashboard. Codex-specific
-changes are confined to command wording, task ownership, proposal transport,
-and unavailable host telemetry.
+The HTML/CSS shell originated from the Claude 6.28.7 dashboard. Portable
+dashboard behavior is current through Claude 6.34.0: plan/roadmap text caches
+invalidate by mtime, and finalized workflows outside the current roadmap live
+behind the conditional Done tab. Codex-specific changes remain confined to
+command wording, task ownership, proposal transport, and unavailable host
+telemetry.
 
 The server is deliberately unprivileged:
 

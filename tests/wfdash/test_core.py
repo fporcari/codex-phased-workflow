@@ -48,6 +48,7 @@ class CoreTest(unittest.TestCase):
         self.assertEqual(state["plan"]["slug"], "portable")
         self.assertEqual(state["plan"]["done"], 1)
         self.assertEqual(state["plan"]["total"], 2)
+        self.assertIsNone(state["plan"]["channel"])
         self.assertEqual(len(state["plan"]["lifecycle"]), 4)
         self.assertEqual(state["foreman"]["host"], "codex")
         self.assertEqual(state["tree"]["label"], "portable")

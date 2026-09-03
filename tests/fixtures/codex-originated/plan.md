@@ -1,6 +1,7 @@
 # Context: wf/codex-originated
 Parent: develop
 Mode: autonomous
+Channel: relayed
 
 ## Objective
 

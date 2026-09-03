@@ -9,7 +9,9 @@ Supervision and resume view of the work plan. **Read-only on source code** — t
 
 A healthy workflow is a valid reason to run this: when nothing is broken it early-exits with the state report and nothing to resume.
 
-**Shared conventions:** read `<PLUGIN_ROOT>/refs/common.md` and `<PLUGIN_ROOT>/refs/foreman.md` once at start — core conventions plus the foreman protocol this skill takes command through.
+**Shared conventions:** read `<PLUGIN_ROOT>/refs/common.md` once at start. Read
+`<PLUGIN_ROOT>/refs/foreman.md` at Step 1b only after the plan proves relayed or
+legacy; an in-chat workflow has no relay to take command of.
 
 ## The map
 
@@ -21,7 +23,7 @@ Every other skill in this plugin is **user-invoked**: only the user typing its n
 | `/write-workflow` | there is no plan yet, and the work was just discussed |
 | `/import-workflow` | a plan or handoff document already exists outside `.phased/` |
 | `/issue` | the work starts from a GitHub issue (analysis only) |
-| `/execute-phase` | run the next phase in a new chat, with an approval gate |
+| `/execute-phase` | run the next phase with an approval gate — a new task on relayed/legacy, this conversation on in-chat |
 | `/run-workflow` | run every remaining phase unattended (`Mode: autonomous` plans) |
 | `/repair-phase` | a phase is `[!]` and needs fresh eyes |
 | `/doctor` | the work and the plan may have drifted apart — coherence audit, contract-test integrity, blind retro-fit of missing tests |
@@ -44,7 +46,11 @@ The third command gives `BASE`, the commit that added the plan. Everything after
 
 ## Step 1b: The foreman
 
-Read `.phased/active/<slug>/foreman.json` (protocol, file format and
+On `Channel: in-chat` there is no relay and nothing to take command of. The
+plan's decisions belong to the user in this conversation; skip to Step 2 and
+report the channel.
+
+On relayed and legacy plans, read `.phased/active/<slug>/foreman.json` (protocol, file format and
 take-command mechanics live once in `foreman.md` → *The foreman*):
 
 - **Absent** → **assume command, without asking**: the normal state of every
@@ -86,15 +92,18 @@ Two distinct kinds of drift, and they mean different things:
 2. **Uncommitted leftovers** — in the tree, in no commit, with no `[>]` phase to explain them.
 
 Flag a phase as **oversized** when its commit spans more than ~10 files, covers unrelated areas (model + UI + tests for different features), or is too large to review as one commit. **Exception:** a `vast` phase is intentionally whole — that size is by design, never propose re-phasing it for size alone. For a pending phase the same judgment is a projection from its `Files:`, not a measurement; say which one you are making.
+For a phase carrying `> Batches:`, apply that judgment to each batch's partial
+commit, not the phase total: an oversized batch is a finding; a large phase
+made of reviewable batches is not.
 
 ## Step 3: Report
 
-1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is waiting for the user's checks (`contracts.md` → *Verification*). Read `log/phase-N.txt` and `log/repair-N.txt` beside the plan when present. Also resolve `T=$(python3 "<PLUGIN_ROOT>/scripts/next-phase.py" --transport)` and inspect `$T-run.log`, `$T-phase-N.log`, or `$T-repair-N.log` when a worker was interrupted before its outcome commit; those external files are diagnostic only, while committed plan state is authoritative. A `[!]` phase carrying `> Repair started:` is under repair, not immediately available for a second repair. Judge staleness from the timestamp, log, process state when locally observable, and the user's account — never from a product-specific session id. Close with one **Foreman** line naming the host in `foreman.json` and whether a live message channel is available; the committed plan remains authoritative when it is not.
+1. **Plan state** — every phase with its marker. For `[>]`, show the timestamp and flag anything older than 2h: *"running for over 2 hours — the previous chat may have ended"* — unless it carries a `> Testing:` note, which means it is waiting for the user's checks (`contracts.md` → *Verification*). Read `log/phase-N.txt` and `log/repair-N.txt` beside the plan when present. Also resolve `T=$(python3 "<PLUGIN_ROOT>/scripts/next-phase.py" --transport)` and inspect `$T-run.log`, `$T-phase-N.log`, or `$T-repair-N.log` when a worker was interrupted before its outcome commit; those external files are diagnostic only, while committed plan state is authoritative. A `[!]` phase carrying `> Repair started:` is under repair, not immediately available for a second repair. Judge staleness from the timestamp, log, process state when locally observable, and the user's account — never from a product-specific session id. Close with one **Channel** line: on in-chat say the work continues here and name no foreman; on relayed/legacy name the foreman host and live message channel. The committed plan remains authoritative.
 2. **Workflow commits** — `git log --oneline $BASE..HEAD`, one line per phase, with the files each touched.
 3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
 5. **Oversized phases** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
-6. **Next step** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, clean up drift — or, when what smells is incoherence between the landed work and the pending phases' premises rather than record drift, `/doctor` for the verdict instead of the suspicion. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`): both are chosen when that chat is opened, so the hint is only useful before it is.
+6. **Next step** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, clean up drift — or, when what smells is incoherence between the landed work and the pending phases' premises rather than record drift, `/doctor` for the verdict instead of the suspicion. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`). When it is a fresh successor foreman task, quote `gpt-5.6-sol` / `high` from `foreman.md`. These settings are chosen when the task opens, so the hint is useful only beforehand.
 
 **The board.** On a `Mode: interactive` plan, render points 1 and 6 as the strip specified in `<PLUGIN_ROOT>/refs/board.md` — read it there rather than inferring the shape; it is the single source, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a strip argues badly. On an autonomous plan, no board at all. No `visualize` server → the same rows as a plain list, per the ref.
 
@@ -106,7 +115,7 @@ Something needs action → propose it via Codex user-input prompt: reset a stale
 
 - **Stale `[>]` reset** — back to `[ ]` with `> Execution interrupted, phase available for retry`.
 - **Re-phasing** — replace the oversized phase with the split sub-phases, marking the completed ones `[x]` and leaving the rest `[ ]`.
-- **A phase for the remainder of one closed short** — announced by the `phase N closed short` message, and the reason it is here and not in the child: the phase that overran is evidence the sizing was wrong, and sizing is this chat's job. Write what remains as its own phase (or phases, if the overrun says the slice was too big), from the remainder recorded in `notes.md` under that phase's heading.
+- **A phase for the remainder of one closed short** — announced by the relayed message or said at the in-chat gate. The phase that overran is evidence the sizing was wrong, and sizing belongs to whoever owns the plan. Write what remains from the record in `notes.md`.
 - **Re-planning after a rejected result** — the answer to *"this phase passed and is still wrong"*, and the case the `phase N closed, result rejected` message announces. It is not only an append: the phases that have not run were written for the design just rejected, so they are re-planned too — rewritten where they no longer fit, dropped where they no longer apply — while the closed phase keeps its `[x]` and its `> Review:` verdict. A phase whose `Done:` went green cannot be repaired into a different design: `/repair-phase` only takes a `[!]`, and its job is to make a `Done:` green again, not to reopen a decomposition. What the plan needs is one or more **new phases**, written from the user's own account of the problem (the user's own account of it, here in this chat).
 
   **In the tail, never in the middle**, even when the work logically belongs at Phase 2. Phase numbers must be contiguous ascending from 1, so an insertion renumbers everything after it — while the commits already made say `wf(phase 3)`, `wf(phase 4)` with the old numbers, and the correspondence between the plan and the history breaks silently. Execution order stays the numeric order; the new phase's text says what it remedies.
@@ -125,4 +134,6 @@ git add .phased && git commit -q -m "wf: <what changed>"
 
 Leaving it uncommitted would break the clean-tree invariant the next phase's baseline check relies on.
 
-After any such commit, send the foreman one `plan changed` message per `foreman.md` → *The foreman* when a live channel exists. Skip it when this chat is the foreman or no channel exists. A plan reshaped from a supervision chat must not surface for the first time at finalize.
+After any such commit, send the foreman one `plan changed` message on relayed,
+best-effort. On in-chat, report it to the user here. The plan commit is the
+authoritative record on both roads.

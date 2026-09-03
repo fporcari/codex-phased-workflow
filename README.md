@@ -16,8 +16,9 @@ contexts, and consolidates the workflow only after a whole-diff quality gate.
 
 - `.phased/active/<slug>/plan.md`, notes, verification, mockups, tests, and logs;
 - phase states `[ ]`, `[>]`, `[x]`, `[!]`, and `[~]`;
+- optional `Channel: in-chat|relayed` routing and planned `Batches:` notes;
 - note fields such as `Done`, `Files`, `Issue`, `Attempted`, `Applied`, `Repaired`, and `Blocked`;
-- `wf/<slug>` branches, a plan-first commit, and one commit per phase;
+- `wf/<slug>` branches, a plan-first commit, one closing commit per phase, and optional batch/checkpoint partials;
 - portable `opus`/`fable` model labels in plans.
 
 Codex maps all code-writing labels, including legacy `sonnet`, to
@@ -55,6 +56,7 @@ flowchart TB
 | Concern | Claude implementation | Codex implementation | Compatibility consequence |
 |---|---|---|---|
 | Interactive supervisor | A foreman chat | A foreman task | Same ownership recorded in `foreman.json` |
+| Interactive in-chat channel | One attended conversation carries planning, phases, and gates | The same conversation carries planning, phases, and gates | No relay and no `foreman.json`; decisions still land in `notes.md` |
 | Workers inside one runtime tree | Child agents/sessions can exchange live messages | Codex subagents can exchange live messages with their parent task | Progress can be relayed immediately |
 | Autonomous phase isolation | Fresh `claude -p` session per phase | Fresh ephemeral `codex exec` session per phase | Both start with clean context |
 | Foreman ↔ autonomous worker dialogue | Claude session tools can provide a live return channel when available | Separate `codex exec` processes do not currently expose a portable live channel back to the app task | Codex uses committed markers, notes, logs, and `EVENT:` lines as the authoritative return path |
@@ -62,14 +64,15 @@ flowchart TB
 | Autonomous permissions | Claude auto permission mode | Codex `workspace-write` with no automatic escalation approval | Out-of-scope operations fail and return to the foreman |
 | Independent judges | Claude agent manifests | Fixed judge prompts dispatched to fresh Codex subagents | Same fresh-eyes review semantics, different packaging |
 | Plugin-relative paths | Claude plugin-root environment | Codex resolves the plugin directory from the loaded skill path | Runtime paths never enter `.phased/` |
+| Workflow workspace | Claude may provision a host-specific worktree during planning | Codex uses the checkout or worktree selected when the task is created | Workspace provisioning never enters the portable protocol |
 | Notifications | Product/session notification facilities when available | Sparse `EVENT:` output plus task notifications when available | Notification failure never changes workflow state |
 
 ### Known coordination gap
 
 An ephemeral CLI worker does not address the desktop foreman directly. The
 launcher holds a plan-defect claim on an owner-private file return leg while
-the supervising task is live; without that inspector, timeout falls through to
-fresh repair. Every outcome still lands first as a marker, structured notes,
+the supervising task is live. The hold has no default deadline; an explicit
+timeout may hand the claim to fresh repair. Every outcome still lands first as a marker, structured notes,
 log, and commit. This is what makes a handoff across products or machines
 reliable.
 
@@ -96,7 +99,7 @@ updates, verification, and Claude handoff instructions.
 ## Typical flow
 
 1. `scope-workflow` for a decision-heavy idea, or start from a clear request.
-2. `write-workflow` creates the branch and commits `.phased/`.
+2. `write-workflow` chooses mode and channel, creates the branch, and commits `.phased/`.
 3. `execute-phase` runs one interactive phase, or `run-workflow` launches a
    fresh Sol session for each autonomous phase.
 4. `quality-check` reviews the complete result.

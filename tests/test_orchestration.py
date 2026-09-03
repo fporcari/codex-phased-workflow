@@ -129,6 +129,52 @@ class OrchestrationTest(unittest.TestCase):
         self.assertIn("Repaired: fresh repair", (plan_dir / "plan.md").read_text())
         self.assertTrue((plan_dir / "log" / "repair-1.txt").is_file())
 
+    def test_plan_defect_wait_has_no_default_deadline_and_honours_stop(self):
+        plan = FIXTURE.read_text().replace(
+            "- [ ] **Phase 1**:",
+            "- [!] **Phase 1**:",
+            1,
+        ).replace(
+            "  - Pattern reference:",
+            "  > Issue: plan-defect claim — exact premise is wrong\n"
+            "  > Attempted: mock evidence\n"
+            "  - Pattern reference:",
+            1,
+        )
+        temporary, repo, plan_dir, bin_dir = self.repository(plan)
+        self.addCleanup(temporary.cleanup)
+        prefix = subprocess.run(
+            ["python3", str(SELECTOR), "--transport", str(plan_dir / "plan.md")],
+            cwd=repo,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+        process = subprocess.Popen(
+            ["bash", str(LAUNCHER)],
+            cwd=repo,
+            env=self.environment(bin_dir),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        lines = []
+        for line in process.stdout:
+            lines.append(line)
+            if "EVENT: phase-needs-foreman:1" in line:
+                Path(prefix + "-foreman-answer").write_text("not-a-verdict\n")
+            elif "EVENT: consult-answer-invalid:1:not-a-verdict" in line:
+                Path(prefix + "-stop-request").write_text("stop while consulting\n")
+        process.stdout.close()
+        status = process.wait(timeout=10)
+        output = "".join(lines)
+        self.assertEqual(status, 0, output)
+        self.assertIn("EVENT: consult-answer-invalid:1:not-a-verdict", output)
+        self.assertIn("EVENT: run-end:stopped-by-request:0/", output)
+        self.assertIn("- [!] **Phase 1**", (plan_dir / "plan.md").read_text())
+        self.assertFalse((plan_dir / "log" / "repair-1.txt").exists())
+        self.assertNotIn('RUN_WORKFLOW_CONSULT_TIMEOUT:-600', LAUNCHER.read_text())
+
     def test_stale_stop_is_removed_and_phase_budget_counts_landings(self):
         plan = FIXTURE.read_text()
         plan = plan.replace(
@@ -234,7 +280,7 @@ class OrchestrationTest(unittest.TestCase):
         for line in process.stdout:
             lines.append(line)
             if "EVENT: phase-needs-foreman:1" in line:
-                Path(prefix + "-foreman-answer").write_text("plan-defect: apply\n")
+                Path(prefix + "-foreman-answer").write_text("PLAN-DEFECT: APPLY\n")
             elif "EVENT: phase-apply-wait:1" in line:
                 plan_path = plan_dir / "plan.md"
                 text = plan_path.read_text().replace("- [!] **Phase 1**:", "- [x] **Phase 1**:", 1)

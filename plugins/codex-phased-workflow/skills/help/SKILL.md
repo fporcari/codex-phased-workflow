@@ -19,10 +19,10 @@ and the table below are the canon of what to say, not a page to paste.
   `/wf:scope-workflow` first, one question at a time. Starting from a GitHub
   issue → `/wf:issue` for the analysis. A plan or handoff that already
   exists → `/wf:import-workflow`.
-- **A plan exists, building interactively.** One fresh chat per phase,
-  `/wf:execute-phase`: one approval gate up front (a rendered mockup on `ui`
-  phases), then execution without interruptions; the phase closes through
-  `/wf:close-phase` on your ok.
+- **A plan exists, building interactively.** `/wf:execute-phase` gives one
+  approval gate up front, then execution; `Channel: relayed` and legacy plans
+  use one fresh task per phase, while `Channel: in-chat` keeps every phase and
+  gate in this conversation.
 - **A plan exists, run it unattended.** `/wf:run-workflow` from the foreman
   chat: one sub-session per phase, one automatic repair on failure, stop
   conditions. The `-agent` variants (`/wf:execute-phase-agent`,
@@ -32,14 +32,12 @@ and the table below are the canon of what to say, not a page to paste.
   reproduces → `/wf:repair-phase` in a chat of its own; the phase chat
   checkpoints and stands down until the repair hands back.
 - **The work is done but it was the wrong thing** — everything green, result
-  rejected: tell the foreman chat; the phase closes `[x]` carrying the
-  verdict, and the phases that have not run are re-planned there
-  (`/wf:resume-workflow` in the foreman chat, or a fresh one — never in a
-  chat that is executing a phase).
-- **A phase chat is struggling** — presuppositions in doubt, the
-  conversation circling on why it does not work: that is the stop-loss; the
-  phase routes the doubt to the foreman as a `clarify?` and lands on one of
-  the two cases above.
+  rejected: the phase closes `[x]` carrying the verdict and the remaining work
+  is re-planned on the configured route — foreman on relayed, this gate on
+  in-chat.
+- **A phase is struggling** — presuppositions in doubt, the conversation
+  circling on why it does not work: that is the stop-loss; route the doubt per
+  `Channel:` and land on one of the two cases above.
 - **Lost, or resuming after days** — `/wf:resume-workflow` in a fresh chat:
   it needs the branch, nothing else, and it names the next command.
 - **Want a live local view** — `/dashboard` opens the optional authenticated
@@ -52,7 +50,8 @@ and the table below are the canon of what to say, not a page to paste.
   retro-fit of the missing tests, verified phase by phase.
 - **Every phase is `[x]`** — `/wf:quality-check` first: the QA pass of the
   deferred human checks, the naming review, the whole-diff review at the
-  depth you choose — it stamps the plan. Then `/wf:finalize-workflow`:
+  depth you choose; bounded corrections the user states there are QA fixes,
+  not new phases. Then `/wf:finalize-workflow`:
   lessons, archive, one consolidated commit on the parent — then PR, merge,
   or leave it.
 

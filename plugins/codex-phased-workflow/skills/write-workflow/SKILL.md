@@ -10,7 +10,12 @@ Plan a work session, then open the branch and commit the plan. The plan is the *
 1. **NEVER edit source code.** Read anything; write nothing outside `.phased/`.
 2. **Do not implement.** The user runs `/execute-phase` afterwards.
 
-**Shared conventions:** read `<PLUGIN_ROOT>/refs/common.md`, `<PLUGIN_ROOT>/refs/contracts.md` and `<PLUGIN_ROOT>/refs/foreman.md` once at start — core conventions, the contract layer planning authors, the take-command protocol. **The board** an interactive plan closes with is specified once in `<PLUGIN_ROOT>/refs/board.md` — read it at Step 6, not before.
+**Shared conventions:** read `<PLUGIN_ROOT>/refs/common.md` and
+`<PLUGIN_ROOT>/refs/contracts.md` once at start. Read
+`<PLUGIN_ROOT>/refs/foreman.md` only at Step 4 and only after Step 2 settled
+`Channel: relayed`; on `Channel: in-chat` nothing creates a relay. The board
+an interactive plan closes with is specified once in
+`<PLUGIN_ROOT>/refs/board.md` — read it at Step 6, not before.
 
 ## Step 1: Where are we
 
@@ -26,6 +31,13 @@ git rev-parse --verify origin/develop >/dev/null 2>&1 && echo develop || echo ma
 
 The user's answer is the primary input. Read code only in service of the plan.
 
+Then look before deciding anything. Four premise classes account for most
+avoidable plan defects: a literal asserted unique without checking duplicates;
+behaviour copied from a design document that the code contradicts; a remedy
+such as a flag, environment variable, or CLI option unchecked against the
+tool's real interface; arithmetic stated without computing it. Verify those
+premises now, before questions and phase sizing.
+
 This same fork decides the branch in Step 4 — remember which side you are on.
 
 ## Step 2: The automation fork
@@ -40,18 +52,50 @@ Derive the recommendation from the work just discussed and state it in one line 
 Ask with `Codex user-input prompt` (recommended option first, per `common.md`), two options:
 
 - **Autonomous** — `/run-workflow` runs the whole plan unattended, one self-correcting sub-session per phase.
-- **Interactive** — one chat per phase with `/execute-phase`, a human approval gate on each.
+- **Interactive** — `/execute-phase` with a human approval gate on each phase;
+  the channel below decides whether the work stays in this conversation or is
+  relayed across tasks.
 
 The answer routes the rest of this skill:
 
 - **Autonomous** → read `<PLUGIN_ROOT>/refs/write-workflow-autonomous.md` and apply its stricter refinement and format on top of the steps below; the plan carries `Mode: autonomous`.
 - **Interactive** → continue with this file's format; the plan carries `Mode: interactive`.
 
+Then settle the channel in a second question, only after the mode answer and
+never in the same prompt. `Mode:` says how the work runs; `Channel:` says where
+its decisions travel (`contracts.md` → *The channel*). Every new plan writes it.
+
+- `Mode: autonomous` always writes `Channel: relayed`: there is no attended
+  gate, so the relay is the only route a decision has.
+- For `Mode: interactive`, ask once. Recommend `in-chat` when the same person
+  sits at every gate and one conversation plans and executes in sequence.
+  Recommend `relayed` when different tasks or times pick up phases, or several
+  workflows run at once. Phases remain ordered and serial either way.
+
 ## Step 3: Build the plan
 
 Extract from the conversation: objective, phases, files per phase, pattern references, decisions, sizing, notes.
 
-**Pattern references.** Every `/execute-phase` runs in a fresh chat: whatever isn't in the plan gets re-discovered there, phase after phase. While the code is in front of you, find 1–2 existing examples to copy-adapt for each phase that writes non-trivial code, and record concrete paths in `Pattern:`. Library-standard work → `library-standard`; nothing comparable → `new-pattern`. From ~3 such phases up, dispatch read-only Explore subagents in waves of at most four instead of searching serially. Each returns at most two concrete candidates with verified paths, or exactly `NO CANDIDATE`, and identifies any premise it could not verify.
+**Sizing starts at decision boundaries.** A phase is the largest coherent unit
+that can be executed, verified, and reviewed without an intermediate result
+forcing the remainder to be re-planned. Count the points where a result changes
+what comes next, not the files. Mechanical work can remain one phase however
+wide; three unknown root causes are three phases. A coherent phase whose diff
+is too large to review at once remains one phase and gets `> Batches:`.
+
+**Write nothing about code you have not seen.** `Files:`, `Pattern:`, and any
+`Decisions:` assertion about current behaviour rest on the Step 1 inspection.
+Files that do not exist yet are ordinary plan output, not claims about the tree.
+
+**Pattern references.** On `Channel: relayed`, every `/execute-phase` starts in
+a fresh task; on `Channel: in-chat`, compaction can cost the same. Either way
+the plan is the memory. While the code is in front of you, find 1–2 existing
+examples to copy-adapt for each phase that writes non-trivial code, and record
+concrete paths in `Pattern:`. Library-standard work → `library-standard`;
+nothing comparable → `new-pattern`. From ~3 such phases up, dispatch read-only
+Explore subagents in waves of at most four instead of searching serially. Each
+returns at most two concrete candidates with verified paths, or exactly
+`NO CANDIDATE`, and identifies any premise it could not verify.
 
 **Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into Codex user-input prompt, and recorded in `Decisions:`. For a shared table, settle the row-set boundary (which records appear and which are excluded). For UI composition, settle the intended hierarchy and relationships while leaving the mockup-negotiable presentation details to the interactive phase. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
@@ -69,7 +113,9 @@ tests*; writing them inside `.phased/` keeps this skill's own first rule
 intact. Authoring them is plan-time work: derive each phase's tests from its
 `Details:` and `Done:`, in the repo's own test style, lint every authored test
 with the repository's narrow test/lint command before the plan commit, and
-present them with the plan.
+check every import path and fixture they depend on against the repository. An
+import no existing file uses is a premise to verify against the loader, not a
+convention to assume. Present the tests with the plan.
 
 **The consumer question.** When `.phased/roadmap.md` has unstarted
 macro-phases — or the discussion names later work that will consume this
@@ -99,7 +145,10 @@ Either way:
 3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the file ceiling is lifted for it only.
 4. **`ui`** — a phase whose deliverable is judged by eye: a page, a form, a dashboard. Interactive plans only (an autonomous run has nobody to approve a mockup). At execution the approval gate includes a rendered HTML mockup iterated with the user, and verification adds a browser pass plus a fidelity judge against that mockup (`contracts.md` → *Verification*). Tag it here so the executing chat knows before exploring.
 
-The split-vs-`vast` call and the `ui` tag materially change execution — batch them into the Decisions questions. Phases always run in order, each in its own chat; there are no parallel or grouped phases.
+The split-vs-`vast` call and the `ui` tag materially change execution — batch
+them into the Decisions questions. Phases always run in order; `relayed` gives
+each its own task, while `in-chat` keeps them in this conversation. There are
+no parallel or grouped phases.
 
 **Verification fields.** `Done:` and `Verify:` are two audiences, and their contract lives once in `<PLUGIN_ROOT>/refs/contracts.md` → *Verification* — read it there rather than inferring it. When writing an interactive plan: give every phase a `Done:` the machine can re-run, and add `Verify:` steps only for what genuinely needs human eyes, each with its *when* (`now` / `deferred: needs Phase M`). What a browser agent could assert belongs in `Done:`, never on the human's list. On a `ui` phase the `Verify:` list is authored COMPLETE here — the checks the human will run at that phase are pre-established now, and execution may add but never drop or reword them (`contracts.md` → *Verification*, authored checks are foreman-owned).
 
@@ -127,16 +176,26 @@ Derive the slug from the objective: kebab-case, strip accents, ≤50 chars, a le
 
 **On a feature branch** → the default is to **adopt it** as the workflow branch: `.phased/` goes there, no new branch, and `Parent:` is that branch's own base. You created that branch on purpose; nesting another inside it buys nothing. The alternative, offered in the branch line above, is `wf/<slug>` off it — take it when the workflow is a distinct chunk the user may want to merge or drop on its own; the current branch then becomes the `Parent:`.
 
-**No worktree here.** Planning creates the branch and the plan, nothing else: the workspace belongs to execution. `/run-workflow` attaches or creates the worktree itself when the run needs one, and `/finalize-workflow` removes it — the user never manages it.
+**Use the Codex task's workspace.** Planning creates the branch and plan in
+the checkout or Codex worktree already attached to this task. It never creates
+a nested host-specific worktree directory or runs host-specific activation
+commands. If a separate Codex worktree is wanted, choose it when creating the
+task; from Step 5 onward every path and git command stays anchored at that root.
 
 ## Step 5: Write it
 
-`.phased/active/` already occupied → stop and say so: one branch, one plan. Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty `notes.md`, and `foreman.json` — **this chat takes command of the workflow it is creating**, per `foreman.md` → *The foreman* (write the file — it rides Step 6's plan commit, no second one; this chat titles itself there too, and the closing message states it).
+`.phased/active/` already occupied → stop and say so: one branch, one plan.
+Otherwise create `.phased/active/<slug>/` holding `plan.md`, an empty
+`notes.md`, and — on `Channel: relayed` — `foreman.json`: this task takes
+command per `foreman.md` → *The foreman*. The file rides Step 6's plan commit.
+On `Channel: in-chat` there is no relay to command: no `foreman.json`, no
+take-command step, and this conversation carries the work.
 
 ```
 # Context: <branch-name>
 Parent: <parent-branch> | Issue: #<number> (if present)
 Mode: interactive
+Channel: <in-chat|relayed>
 Must not break: <one line per contract owned by later work — contracts.md → *Must not break:*; omit only when no roadmap and no known consumer>
 
 ## Objective
@@ -151,6 +210,7 @@ Must not break: <one line per contract owned by later work — contracts.md → 
   - Details: <what to do concretely>
 - [ ] **Phase 2**: table foo with its TH UI (model + webpage)  `ui`
   - Run: opus / low
+  > Batches: 1 model + relations | 2 TableHandler view | 3 form and its tests
   - Files: packages/foo/model/foo.py, packages/foo/webpages/foo.py
   - Details: table + columns + relations, then TableHandler view + form.
   - Done: end-to-end test — create a row via the form, assert it persists and reloads in the grid
@@ -181,12 +241,13 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
-This chat is the foreman, now titled `wf:<slug>:foreman` — it is the address phase chats report to.
-To run it, launch /execute-phase in a new chat — this one stays the board.
+relayed → this task is the foreman, now titled `wf:<slug>:foreman`; launch /execute-phase in a new task and this one stays the board. A successor foreman task uses gpt-5.6-sol / high.
+in-chat → no relay: /execute-phase runs here, phase after phase, every gate in this conversation.
 Phase 1 — suggested: <model>, effort <effort>.
 ```
 
-Where the title could not be set — the tool is absent — that line becomes the ask instead, per `foreman.md` → *The foreman*, take-command step 3.
+On the relayed road, where the title could not be set, that line becomes the
+ask instead per `foreman.md` → *The foreman*.
 
 The last line repeats Phase 1's `Run:` hint, because the model and the effort are chosen when that session starts — reading it afterwards is too late.
 

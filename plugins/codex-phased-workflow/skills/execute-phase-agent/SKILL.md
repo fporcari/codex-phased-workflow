@@ -1,6 +1,6 @@
 ---
 name: execute-phase-agent
-description: Execute the next phase unattended — no questions, baseline attribution, convergence loop, one commit per phase
+description: Execute the next phase unattended — no questions, baseline attribution, convergence loop, one closing commit per phase
 ---
 
 # Execute Phase — Agent

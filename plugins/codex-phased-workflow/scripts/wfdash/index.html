@@ -475,9 +475,11 @@ let mirror=null, draft='', sending=false, sendMsg='', sendCls='', talkLen=-1, ta
 let nf={name:'',scope:'',owner:null,msg:'',cls:'',sending:false};
 // The launch. Nothing here holds a run: the server proposes, the chat runs.
 let launching='', launchMsg='', launchCls='', launchCmd='';
-// The plan's own words, keyed `<slug>:<phase>`. Fetched once per key: the file
-// changes rarely and re-reading it on every poll would fight the reader.
-let planText={}, planView='planned';   // planned | executed | raw
+// The plan's own words, keyed `<slug>:<phase>` — `r:<macro>` for a roadmap
+// section. A cached copy is re-read only when the state tick reports a new
+// mtime, so a rewritten plan does not stay stale for the life of the page.
+let planText={}, planStamp={}, planLoading=new Set();
+let planView='planned';                // planned | executed | raw
 let macroSub='ov';                     // the macro-phase pane: ov | plan
 let macroPlanView='roadmap';           // inside it: roadmap | plan
 // The chats whose subagents are shown. Closed is the default: a chat with a
@@ -659,6 +661,8 @@ function stageOf(n){
 }
 
 function nodeKey(n){return n.slug?('s:'+n.slug):('m:'+n.n);}
+function archived(n){return n.kind==='plan'&&n.state==='done';}
+function archivedNodes(){return ((S.tree&&S.tree.nodes)||[]).filter(archived);}
 function nodeFigures(n){
   // A macro-phase row carries the sum of its attributed phases. No
   // No cost bar: the median comparison is per phase, not per plan.
@@ -728,11 +732,11 @@ function grid(){
     el.innerHTML='<tr><td colspan="11" class="empty">no plan in .phased/active/'
       +' — the Phase tab carries the button that creates one</td></tr>';return;}
   initOpen();
-  const rows=[];
-  if(!tree.roadmap){
+  const rows=[], arch=(level==='done');
+  if(!arch&&!tree.roadmap){
     (tree.phases||[]).forEach(f=>rows.push(phaseRow(f,S.plan&&S.plan.slug)));
   }else{
-    tree.nodes.forEach(n=>{
+    tree.nodes.filter(n=>archived(n)===arch).forEach(n=>{
       const on=openNodes.has(nodeKey(n));
       const lab=(n.n!=null?`M${n.n} · `:'')+n.title;
       rows.push(`<tr class="lv1 ${n.state==='done'?'dim ':''}${
@@ -763,8 +767,10 @@ function grid(){
 function nav(){
   const nAct=S.totals.active, nOff=S.groups.off_plan.length;
   const nErr=S.alerts.filter(a=>a.level==='error').length, nAl=S.alerts.length;
-  // Above the grid: what does not belong to any phase.
+  // Done appears only when finalized workflows from past roadmaps exist.
+  const nArch=archivedNodes().length;
   const tops=[['plan','Plan',''],
+    ...(nArch?[['done','Done',`<span class="badge">${nArch}</span>`]]:[]),
     ['off','Off plan',nOff?`<span class="badge">${nOff}</span>`:'']];
   document.getElementById('topnav').innerHTML=tops.map(([id,lab,b])=>
     `<button data-t="${id}" aria-selected="${level===id}">${lab}${b}</button>`).join('');
@@ -1200,25 +1206,32 @@ function planBlock(slug,n){
       `<p class="empty">nothing under ${planView} for phase ${n}</p>`}</div>`;
 }
 
-async function loadRoadmap(macro){
-  const key='r:'+macro;
-  if(planText[key]!==undefined)return;
-  planText[key]=null;
+function textStamp(key){
+  const stamps=(S&&S.stamps)||{};
+  if(key.startsWith('r:'))return stamps.roadmap??null;
+  const slug=key.slice(0,key.lastIndexOf(':'));
+  return (stamps.plans&&stamps.plans[slug])??null;
+}
+
+async function loadText(key,url){
+  if(planLoading.has(key))return;
+  const stamp=textStamp(key);
+  if(planText[key]!==undefined&&planStamp[key]===stamp)return;
+  planLoading.add(key);
   let j;
-  try{j=await(await fetch('/api/roadmap?macro='+macro)).json();}
+  try{j=await(await fetch(url)).json();}
   catch(e){j={error:'the server did not answer'};}
-  planText[key]=j;render();
+  planLoading.delete(key);
+  planText[key]=j;planStamp[key]=stamp;render();
+}
+
+async function loadRoadmap(macro){
+  return loadText('r:'+macro,'/api/roadmap?macro='+encodeURIComponent(macro));
 }
 
 async function loadPlanText(slug,n){
-  const key=`${slug}:${n}`;
-  if(planText[key]!==undefined)return;
-  planText[key]=null;                       // in flight: one fetch per key
-  let j;
-  try{j=await(await fetch(`/api/plantext?slug=${encodeURIComponent(slug||'')
-    }&phase=${n}`)).json();}
-  catch(e){j={error:'the server did not answer'};}
-  planText[key]=j;render();
+  return loadText(`${slug}:${n}`,`/api/plantext?slug=${
+    encodeURIComponent(slug||'')}&phase=${n}`);
 }
 
 async function loadLog(n){
@@ -1414,6 +1427,7 @@ function refocus(k){
 function render(){
   if(!S)return;
   const keep=focused();
+  if(level==='done'&&!archivedNodes().length)level='plan';
   head();grid();nav();
   const off=(level==='off');
   document.querySelector('.gridwrap').hidden=off;

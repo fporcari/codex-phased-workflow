@@ -5,7 +5,7 @@ description: Quality check of the finished workflow — QA pass with the user, n
 
 # Quality Check
 
-The quality half of closing a workflow: verify the plan is complete, put the QA checks in the user's hands, review the whole diff at the depth the user chooses, and stamp the plan with the outcome. `/finalize-workflow` reads the stamp and does the rest — lessons, archive, consolidation. **Never edit source code here** — findings get reported and delegated. One declared exception: Step 3's naming review, whose edits are the user's own naming decisions plus marker removal.
+The quality half of closing a workflow: verify the plan is complete, put the QA checks in the user's hands, review the whole diff at the depth the user chooses, and stamp the plan with the outcome. `/finalize-workflow` reads the stamp and does the rest — lessons, archive, consolidation. **Never edit source code here** — findings get reported and delegated. Two declared exceptions: the bounded QA correction below and Step 3's naming review.
 
 **Usage:** `/quality-check` — or `/quality-check light|extended|panel|none` to pre-answer Step 5's depth question (the argument is the user's call made early; everything else still runs).
 
@@ -37,6 +37,21 @@ All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifi
 
 `verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
 
+**QA fixes.** A defect the user reports while exercising the list is fixed in
+this task when it is a correction and not a design — the second foreman
+exception (`foreman.md`). The boundary is whether the user's sentence is the
+whole decision: a wrong term, label, field rule or default, or a missing
+catalog entry qualifies. No new table, column, migration, engine change,
+surface, or callable; touch only files earlier phases touched plus catalogs
+that serve them, such as localization or CSS.
+
+Apply the correction, run the suite and lint on the touched files, and make one
+`wf: qa fix — <one line>` commit per QA round. Record each under `## QA fixes`
+in `notes.md` as *what the user saw → what changed*. Beyond that boundary — a
+decision the user has not supplied, a test nobody wrote, or a surface nobody
+built — the correction is a phase appended through `/resume-workflow`; say
+which road it took and why.
+
 ## Step 3: Naming review
 
 Autonomous runs accumulate `wf:phase-N:new` markers on the callables the phases created — nobody could answer a naming question mid-run (`contracts.md` → *New-method markers and minimality*). Collect them over the union of every phase's `> Files:` (`grep -rn "wf:phase-[0-9]*:new" <files>`); none → skip in one line. Found → run `<PLUGIN_ROOT>/refs/naming-review.md` for the whole workflow: ONE map, accept-all as the recommended fast path, renames applied with their call sites, markers stripped, the narrow signal re-run when anything was renamed. Commit the result on the workflow branch:
@@ -49,7 +64,11 @@ git add -A && git commit -q -m "wf: method naming review"
 
 ## Step 4: Review the scope
 
-No staging heuristics and no guessing: the workflow is exactly `git log --oneline "$BASE"..HEAD`, one commit per phase plus the plan commit. Show it, with `git diff --stat "$BASE"..HEAD`.
+No staging heuristics and no guessing: the workflow is exactly
+`git log --oneline "$BASE"..HEAD` — the plan commit plus, per phase, one phase
+commit and any partial commits that preceded it. Group the log by the
+`wf(phase N):` prefix, name each phase's partials, then show
+`git diff --stat "$BASE"..HEAD`.
 
 The tree must be clean. If `git status --short` shows anything, a phase closed without committing or someone edited by hand — report it and ask whether it belongs to the workflow before going on; do not sweep it in silently.
 
@@ -133,6 +152,6 @@ Close with the stamp line repeated in chat and the next step: *"Quality check st
 
 ## Rules
 
-- **NO source code editing** — report findings, delegate fixes. The one exception is Step 3's naming review: renames the user chose and marker removal, committed as its own `wf:` commit
+- **NO source code editing** — report findings and delegate fixes. The two exceptions, each in its own `wf:` commit, are Step 2's bounded QA corrections and Step 3's user-approved naming review
 - A finding never blocks the stamp: the user decides to fix first or stamp as-is, and the stamp records what was found either way
 - The stamp is written even when every answer was "no" — a declined QA and a `none` review are facts finalize must see, not omissions

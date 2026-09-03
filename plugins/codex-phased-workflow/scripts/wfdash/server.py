@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Authenticated localhost dashboard for portable Codex workflow state."""
+"""Authenticated localhost dashboard for portable Codex workflow state.
+
+The state tick includes plan-text mtimes so the page can invalidate its own
+cache without polling each full plan and roadmap body.
+"""
 
 import argparse
 import atexit

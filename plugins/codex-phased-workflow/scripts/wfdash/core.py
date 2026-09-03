@@ -177,6 +177,23 @@ def all_plans(repo):
     return local + _reachable_active_plans(repo, known) + _branch_done_plans(repo)
 
 
+def text_stamps(repo, plans=None):
+    """Return mtimes for plan text that the page may cache."""
+    stamps = {}
+    for entry in plans if plans is not None else all_plans(repo):
+        if not entry["dir"]:
+            continue
+        try:
+            stamps[entry["slug"]] = pathlib.Path(entry["path"]).stat().st_mtime
+        except OSError:
+            pass
+    try:
+        road = (pathlib.Path(repo) / ".phased" / "roadmap.md").stat().st_mtime
+    except OSError:
+        road = None
+    return {"plans": stamps, "roadmap": road}
+
+
 def active_plan(repo):
     plans = [entry for entry in all_plans(repo) if entry["state"] == "active"]
     here = os.path.realpath(repo)
@@ -309,6 +326,7 @@ def plan_view(repo, entry):
             "done": sum(phase["status"] == "x" for phase in phases),
             "total": len(phases),
             "mode": meta.get("mode"),
+            "channel": meta.get("channel"),
             "parent": meta.get("parent"),
             "quality": meta.get("quality_check"),
             "foreman": _foreman(entry),
@@ -376,6 +394,7 @@ class Board:
             "plan": plan,
             "finished": finished_plan,
             "foreman": _foreman(active),
+            "stamps": text_stamps(self.repo, plans),
             "tree": tree,
             "chats": [],
             "groups": {"by_phase": {}, "off_plan": []},

@@ -1,16 +1,15 @@
-# Claude 6.28.7 parity inventory
+# Claude 6.34.0 parity inventory
 
-This inventory records the comparison made on 2026-08-28 before the parity
-work began:
+This inventory records the remote comparison made on 2026-09-03:
 
-- Codex repository: `5e48fc5`, clean working tree;
-- Claude reference repository: `0b02e11`, plugin version `6.28.7`, clean
-  working tree.
+- Codex reference before this port: `ee4f7b0` on `origin/main`;
+- Claude reference: `972b59f` on `origin/main`, plugin version `6.34.0`.
 
 The Claude repository was used read-only. Evidence came from its `CHANGELOG.md`,
 `plugins/wf/`, orchestration suite, dashboard suite, and documentation. The
-Codex repository's existing semantic port through Claude 6.20.0 was the
-adaptation baseline.
+Codex's existing semantic port through Claude 6.28.7 was the adaptation
+baseline. The unrelated local edit in Claude's `docs/claude-code-compat.md`
+was left untouched and excluded from the comparison.
 
 ## Classification
 
@@ -26,10 +25,11 @@ Verification keys used below:
 
 - **P1:** `tests/test_protocol.py` — both-origin fixtures, selector agreement,
   JSON, contract block, transport, fixed Sol, clean-tree launcher behavior.
-- **O1:** `tests/test_orchestration.py` — timeout/interruption, stop, phase
-  budget, plan-defect repair timeout, and green apply.
-- **D1:** `tests/wfdash/test_core.py`, `test_components.py` — selector-backed
-  state, roadmap/check rendering, branch-resident latest closed plan.
+- **O1:** `tests/test_orchestration.py` — interruption, stop, phase budget,
+  open-ended plan-defect hold, invalid answers, explicit timeout, and apply.
+- **D1:** `tests/wfdash/test_core.py`, `test_components.py`,
+  `test_plan_text_freshness.py`, `test_done_tab.py` — selector-backed state,
+  cache invalidation, archive partition, and branch-resident closed plans.
 - **D2:** `tests/wfdash/test_outbox.py` — concurrent append, atomic partition,
   deduplication, ownership, private modes, Codex namespace.
 - **D3:** `tests/wfdash/test_server.py` — authenticated reads/writes, one-shot
@@ -94,7 +94,7 @@ tests and preserved it.
 | 6.14.0 | Doctrine split by consumer | W | `refs/common.md`, `contracts.md`, `foreman.md`; direct citations only. | S1 |
 | 6.15.0 | Messaging channel floors declared | X/C | `foreman.md` declares Codex task/subagent, explicit product message, then disk; Claude CLI version floors are not copied. | S1 |
 | 6.16.0 | Skill doctrine closure has a 1,500-line budget | W | Ported `tests/check_doc_mass.py`; current largest closure is below the ceiling. | S1 |
-| 6.17.0 | Plan-defect claim consult before repair | P/W/X | Claim notes remain portable; Codex launcher waits on `<transport>-foreman-answer`, defaulting to repair on timeout. | O1 |
+| 6.17.0 | Plan-defect claim consult before repair | P/W/X | Claim notes remain portable; Codex launcher waits on `<transport>-foreman-answer`. The later 6.31.0 row removes its default deadline. | O1 |
 | 6.18.0 | Quality check split from finalization and stamped | P/W | `quality-check`, `quality-check-agent`, `finalize-workflow`, stamp in `contracts.md`. | P1, S1 |
 | 6.19.0 | Minimality prevention and detection | W | Existing contract/verifier/naming-review doctrine; path-loaded verifier keeps the check fresh. | S1 |
 | 6.20.0 | Interrupted unattended run is diagnosable at resume | W/X | `resume-workflow` reads selector-derived external run/attempt logs and offers reset + relaunch; landed logs stay beside plan. | O1 |
@@ -120,6 +120,21 @@ tests and preserved it.
 | 6.28.6 | Owner stored atomically; legacy pid-only event recovery | X/C | A Codex owner is already one immutable string. Codex queue filenames are separate, so Claude legacy pid events are never consumed; no compatibility shim is needed. | D2 |
 | 6.28.7 | Page owner and queue stamp share one validated resolution | X/C | `Handler.owner` is the single value used by `/api/state`, queue display, and every stamp. Claude `live_owner()` session-record reconciliation is inapplicable because no supported Codex local session registry exists. | D2, D3 |
 
+## Release matrix: 6.28.8 through 6.34.0
+
+| Claude release | Shipped behavior | Class | Codex implementation and status | Verification |
+|---|---|---:|---|---|
+| 6.28.8 | Plan and roadmap text caches invalidate when their files change | W | Dashboard state publishes per-text mtimes; both text readers share one stamp-aware loader and keep stale text visible until the replacement lands. Branch-only plans retain stable no-mtime behavior. | D1 |
+| 6.29.0 | Finalized workflows outside the current roadmap move to a conditional Done tab | W | The page partitions on `kind === plan && state === done`, preserves closed current-roadmap macros in Plan, and falls back when the archive empties. | D1 |
+| 6.30.0 | Portable `Channel:` and `Batches:`, decision-boundary sizing, inspect-before-asking planning | P/W/X | Selector parses and validates `in-chat|relayed`, preserves absent legacy behavior, rejects autonomous in-chat and the `Chanel:` near miss, and validates batch numbering. Shared doctrine routes questions/outcomes/re-planning by channel; Codex uses task messaging only on relayed. Planned batches are partial commits without WIP or handover. | P1, O1, S1 |
+| 6.30.1 | Ask channel only after the mode answer | W | `write-workflow` and `scope-workflow` make the channel a second, conditional prompt; autonomous derives relayed without asking. | P1, S1 |
+| 6.31.0 | Plan-defect consult has no default deadline; repair cannot buy green through an unplanned workaround | W/X | Launcher holds until a normalized answer or stop request unless `RUN_WORKFLOW_CONSULT_TIMEOUT` is explicitly set. Repair enforces a file/surface and verifier-judgment cost bound, records `plan-defect confirmed`, and removes the workaround from the tree. | O1, S1 |
+| 6.31.1 | Consult accepts prefixed or bare case-insensitive verbs; invalid answers keep holding | W/X | `run-workflow.sh` normalizes `plan-defect:` and case, consumes only `repair|apply|stop`, and emits an invalid-answer event without releasing the gate. | O1 |
+| 6.32.0 | Bounded user-reported QA corrections happen inside quality check | W | `quality-check` owns the correction-not-design boundary, targeted suite/lint, one `wf: qa fix` commit per round, and `## QA fixes` notes; finalize reads those as missing-plan lessons. | P1, S1 |
+| 6.33.0 | Foreman's own model is a written hint | X | Codex-native hint is `gpt-5.6-sol` with high reasoning, repeated where a successor foreman task is opened. | P1, S1 |
+| 6.33.1 | Claude Fable price and cache-read accounting | C | Omitted. Codex exposes no stable priced task-token feed; the dashboard already renders cost telemetry explicitly unavailable. | D1 |
+| 6.34.0 | Claude creates and activates a host-specific worktree during planning | X/C | Adapted to Codex's task-owned environment: planning uses the checkout or Codex worktree chosen when the task is created and never creates a nested Claude worktree or invokes GenroPy activation. The autonomous launcher continues to resolve the plan attached to its task root. | P1, S1 |
+
 ## Intentional runtime divergences
 
 1. **No live transcript, internal todo, or dollar-cost feed.** Their original
@@ -141,6 +156,9 @@ tests and preserved it.
    Codex loads the shipped prompt under `judges/` into a fresh Sol subagent.
 6. **Sandbox differs.** Autonomous Codex workers run `workspace-write` and never
    auto-approve escalation. External effects retain their own authority gate.
+7. **Workspace provisioning is task-owned.** Codex chooses local checkout or
+   worktree when a task is created. The plugin never creates a nested
+   Claude-specific workspace or injects host activation state during planning.
 
 None of these differences changes the committed plan layout, marker lifecycle,
 notes, model labels, contract tests, quality stamp, repair outcome, or phase

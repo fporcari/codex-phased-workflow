@@ -68,7 +68,7 @@ RUN_RE = re.compile(r'^\s*[-*]?\s*Run:\s*(.+)$', re.I)
 # `- Verify:` is the step the plan AUTHORED; `> Verify:` is the one execution
 # recorded — the latter is a note like any other.
 VERIFY_RE = re.compile(r'^\s{2,}[-*]\s*Verify:\s*(.*)$', re.I)
-META_RE = re.compile(r'^\s*[-*]?\s*(Mode|Parent|Branch):\s*(.+)$', re.I)
+META_RE = re.compile(r'^\s*[-*]?\s*(Mode|Channel|Parent|Branch):\s*(.+)$', re.I)
 # Any other field of a phase — it ends the field before it, nothing more.
 FIELD_RE = re.compile(r'^\s*[-*>]')
 # The quality check leaves one line per run under its own heading, and the last
@@ -465,7 +465,7 @@ KNOWN_NOTE_FIELDS = (
     'Done', 'Files', 'Issue', 'Attempted', 'Applied', 'Repaired', 'Repair attempted',
     'Repair started',
     'Review', 'Blocked', 'WIP', 'Testing', 'In execution since', 'Verify',
-    'Verified',
+    'Verified', 'Batches',
 )
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 MODELS = ('fable', 'sonnet', 'opus')
@@ -474,6 +474,13 @@ CHECKBOX_RE = re.compile(r'^- \[')
 BACKTICK_RE = re.compile(r'`([^`]+)`')
 MODE_RE = re.compile(r'^Mode:\s*(\S+)\s*$')
 MODES = ('autonomous', 'interactive')
+CHANNEL_RE = re.compile(r'^Channel:\s*(\S+)\s*$')
+CHANNELS = ('in-chat', 'relayed')
+CHANNEL_NEARMISS_RE = re.compile(
+    r'^([A-Za-z][A-Za-z-]*):\s*(?:in-chat|relayed)\s*$'
+)
+BATCHES_RE = re.compile(r'^\s*>\s*Batches:\s*(.+)$')
+BATCH_ITEM_RE = re.compile(r'^(\d+)\s+\S')
 
 
 def _is_separator(cells):
@@ -505,6 +512,8 @@ def validate(path, phases, text):
     has_parent = False
     mode_value = None
     mode_lineno = None
+    channel_value = None
+    channel_lineno = None
     heading = None
     phase_linenos = {}
     in_work_plan = False
@@ -529,6 +538,22 @@ def validate(path, phases, text):
                 add(idx, 'error',
                     'malformed Mode: line "%s" — expected exactly '
                     '"Mode: <value>"' % line.strip())
+        if line.startswith('Channel:'):
+            cm = CHANNEL_RE.match(line)
+            if cm:
+                if channel_value is None:
+                    channel_value = cm.group(1).lower()
+                    channel_lineno = idx
+            else:
+                add(idx, 'error',
+                    'malformed Channel: line "%s" — expected exactly '
+                    '"Channel: <value>"' % line.strip())
+        else:
+            nm = CHANNEL_NEARMISS_RE.match(line)
+            if nm:
+                add(idx, 'error',
+                    '"%s" carries a channel value under the name "%s" — the '
+                    'field is "Channel:"' % (line.strip(), nm.group(1)))
 
         if line.startswith('## '):
             heading = line[3:].strip()
@@ -568,6 +593,22 @@ def validate(path, phases, text):
                 add(idx, 'warning',
                     'unknown note field "> %s:" (known: %s)'
                     % (nm.group(1).strip(), ', '.join(KNOWN_NOTE_FIELDS)))
+            bm = BATCHES_RE.match(line)
+            if bm:
+                items = [item.strip() for item in bm.group(1).split('|')]
+                numbers = [BATCH_ITEM_RE.match(item) for item in items]
+                if not all(numbers):
+                    add(idx, 'warning',
+                        '"> Batches:" body is not '
+                        '"1 <label> | 2 <label> | ..." — the batch commits '
+                        'name "batch M/K" against this list')
+                elif [int(match.group(1)) for match in numbers] != \
+                        list(range(1, len(items) + 1)):
+                    add(idx, 'warning',
+                        '"> Batches:" items must be numbered from 1 upwards, '
+                        'found %s' % ', '.join(
+                            match.group(1) for match in numbers
+                        ))
 
         if heading == CONFIG_HEADING and line.startswith('|'):
             cells = [c.strip() for c in line.split('|')]
@@ -621,6 +662,15 @@ def validate(path, phases, text):
         add(mode_lineno, 'error',
             "Mode: '%s' is not one of: %s"
             % (mode_value, ', '.join(MODES)))
+
+    if channel_value is not None and channel_value not in CHANNELS:
+        add(channel_lineno, 'error',
+            "Channel: '%s' is not one of: %s"
+            % (channel_value, ', '.join(CHANNELS)))
+    if mode_autonomous and channel_value == 'in-chat':
+        add(channel_lineno, 'error',
+            'Mode: autonomous with Channel: in-chat — an unattended run has '
+            'no attended gate to carry the decisions')
 
     table_present = config_header is not None
     if mode_autonomous and not table_present:

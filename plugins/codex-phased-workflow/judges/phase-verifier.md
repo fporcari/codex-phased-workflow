@@ -44,7 +44,7 @@ Verify, in order:
    executable tests byte-identical; skeletons with their test names and
    every `wf:contract:` comment line surviving verbatim, red placeholder
    body gone, and the body actually asserting what those lines state. A
-   divergence the caller cites no foreman decision for: MECHANICAL, fix:
+   divergence the caller cites no covering decision for: MECHANICAL, fix:
    restore the plan copy. A body that dodges its `wf:contract:` lines
    (asserts less, or something else): MECHANICAL, fix: implement the stated
    contract.
