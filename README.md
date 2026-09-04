@@ -6,9 +6,10 @@ A Codex-native phased development workflow that can take over work started by
 [`claude-phased-workflow`](https://github.com/fporcari/claude-phased-workflow)
 and hand it back without conversion.
 
-The plugin turns a conversation into a committed plan, executes one bounded
-phase at a time, records machine-readable outcomes, repairs failures in fresh
-contexts, and consolidates the workflow only after a whole-diff quality gate.
+The plugin turns a conversation into a one-task brief or a committed plan.
+A workflow earns its phases when context limits, intermediate decision gates,
+or unattended checkpoints and repair justify them. It records machine-readable
+outcomes and consolidates only after a whole-diff quality gate and final touch.
 
 ## Interoperability first
 
@@ -20,6 +21,11 @@ contexts, and consolidates the workflow only after a whole-diff quality gate.
 - note fields such as `Done`, `Files`, `Issue`, `Attempted`, `Applied`, `Repaired`, and `Blocked`;
 - `wf/<slug>` branches, a plan-first commit, one closing commit per phase, and optional batch/checkpoint partials;
 - portable `opus`/`fable` model labels in plans.
+
+Once the phases are done, corrections on a decided design stay in the quality
+check: one approved final-touch table and commit, followed by a Light/low
+re-check of touched files. New surfaces or unresolved design are grouped into
+one phase, never one per review finding.
 
 Codex maps all code-writing labels, including legacy `sonnet`, to
 `gpt-5.6-sol`. The label stays unchanged on disk so Claude can resume the same
@@ -99,10 +105,14 @@ updates, verification, and Claude handoff instructions.
 ## Typical flow
 
 1. `scope-workflow` for a decision-heavy idea, or start from a clear request.
-2. `write-workflow` chooses mode and channel, creates the branch, and commits `.phased/`.
+2. `write-workflow` builds the contract and offers one fresh Codex task when
+   a workflow is not justified. That task receives a self-contained brief on
+   `gpt-5.6-sol` / `high`, with no `.phased/`. Otherwise choose mode and channel,
+   create the branch, and commit the plan.
 3. `execute-phase` runs one interactive phase, or `run-workflow` launches a
    fresh Sol session for each autonomous phase.
-4. `quality-check` reviews the complete result.
+4. `quality-check` reviews the complete result, applies approved QA fixes and
+   final-touch corrections, then performs the scoped Light re-check.
 5. `finalize-workflow` archives the plan and proposes the final consolidation.
 
 At any point, open the same repository in Claude Code and run its

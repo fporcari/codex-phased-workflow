@@ -14,8 +14,10 @@ and the table below are the canon of what to say, not a page to paste.
 ## Where are you?
 
 - **No workflow yet — an idea, an issue, a discussion.** Talk the work
-  through in a chat, then `/wf:write-workflow` turns the conversation into a
-  branch, a plan and its first commit. Decisions still open →
+  through in a chat, then `/wf:write-workflow` recommends a self-contained
+  brief for one task when no context limit, intermediate decision gate, or
+  unattended checkpoint/repair need justifies a workflow. Otherwise it creates
+  a branch, a plan and its first commit. Decisions still open →
   `/wf:scope-workflow` first, one question at a time. Starting from a GitHub
   issue → `/wf:issue` for the analysis. A plan or handoff that already
   exists → `/wf:import-workflow`.
@@ -50,8 +52,9 @@ and the table below are the canon of what to say, not a page to paste.
   retro-fit of the missing tests, verified phase by phase.
 - **Every phase is `[x]`** — `/wf:quality-check` first: the QA pass of the
   deferred human checks, the naming review, the whole-diff review at the
-  depth you choose; bounded corrections the user states there are QA fixes,
-  not new phases. Then `/wf:finalize-workflow`:
+  depth you choose. Corrections on a decided design are QA fixes and one final
+  touch in this task, followed by a Light/low re-check; new surfaces or unresolved
+  design go to one grouped phase, never one per finding. Then `/wf:finalize-workflow`:
   lessons, archive, one consolidated commit on the parent — then PR, merge,
   or leave it.
 
@@ -61,7 +64,7 @@ and the table below are the canon of what to say, not a page to paste.
 |---|---|
 | `/wf:scope-workflow` | settle the open decisions before the plan exists, one question at a time |
 | `/wf:issue` | load and analyze a GitHub issue — analysis only |
-| `/wf:write-workflow` | turn the conversation into branch + plan + first commit |
+| `/wf:write-workflow` | turn the conversation into a one-task brief or branch + plan + first commit |
 | `/wf:import-workflow` | adopt an existing plan or handoff document into `.phased/` |
 | `/wf:execute-phase` | execute the next phase interactively — one gate, then run to completion |
 | `/wf:close-phase` | close a finished phase: naming review, Done gate, `[x]`, one commit |
@@ -72,7 +75,7 @@ and the table below are the canon of what to say, not a page to paste.
 | `/wf:resume-workflow` | where the work stands, and which command takes it forward |
 | `/dashboard` | optional authenticated local state view and task-owned proposal queue |
 | `/wf:doctor` | is the work still coherent with the plan — audit, test integrity, blind retro-fit |
-| `/wf:quality-check` | QA pass, naming review, whole-diff review — stamps the plan |
+| `/wf:quality-check` | QA, naming, whole-diff review, final touch and Light re-check — stamps the plan |
 | `/wf:quality-check-agent` | the read-only quality verification, in a clean sub-session |
 | `/wf:finalize-workflow` | quality gate, lessons, archive, consolidate into one commit |
 | `/wf:pull-request` | open the PR after a maintainer-grade review |

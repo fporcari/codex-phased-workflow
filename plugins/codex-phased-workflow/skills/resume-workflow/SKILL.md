@@ -122,6 +122,13 @@ Something needs action → propose it via Codex user-input prompt: reset a stale
 
   **A closed phase is not reopened.** Its `[x]` and its `> Files:` are the record of what happened and stay as they are; what it lacks becomes new work with its own phase and its own commit. Write the new phases to the same bar as `/write-workflow` — `Files:`, `Details:`, a re-runnable `Done:`, a `Pattern:` where the code is non-trivial, and a `Run:` line — and present them for approval before writing.
 
+- **After a quality check** — accept only what `/quality-check` → *The final
+  touch* sends here: unresolved design or a surface the plan never built, such
+  as a table, page, or migration. Settle the remaining decisions before
+  authoring ONE phase for all such findings together, to the same bar above.
+  Corrections on a decided design stay in the final touch; never create a
+  phase per review finding or reopen a closed phase.
+
 - **Actualising an older plan** — a plan written before a format existed keeps running on defaults, and defaults are invisible. Offer to write them down, on pending phases only (a `[x]` phase is a record of what happened; leave it alone): the `Mode:` header when absent, and on an interactive plan the per-phase `Run: <model> / <effort>` line. Decide each one with `/write-workflow`'s own criteria — that skill is the single source, do not restate them here — and present the values before writing them.
 
   **Fill in defaults, never gaps.** A missing `Run:` is a default made explicit (`opus` / `high`), which is why proposing it is legitimate. A missing `Done:`, `Pattern:` or `Decisions:` is something its author never settled: report it and stop there, exactly as `/import-workflow` Step 3 does. Inventing a plausible `Done:` makes an open question look closed, and nobody checks it twice.

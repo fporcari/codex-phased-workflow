@@ -1,13 +1,14 @@
-# Claude 6.34.0 parity inventory
+# Claude 6.35.0 parity inventory
 
-This inventory records the remote comparison made on 2026-09-03:
+This inventory records the comparison refreshed on 2026-09-04:
 
-- Codex reference before this port: `ee4f7b0` on `origin/main`;
-- Claude reference: `972b59f` on `origin/main`, plugin version `6.34.0`.
+- Codex reference before this port: `390f57f` on `origin/main`;
+- Claude reference: local commit `4d2662c`, plugin version `6.35.0`, one commit
+  ahead of the fetched `origin/main` at `972b59f`.
 
 The Claude repository was used read-only. Evidence came from its `CHANGELOG.md`,
 `plugins/wf/`, orchestration suite, dashboard suite, and documentation. The
-Codex's existing semantic port through Claude 6.28.7 was the adaptation
+Codex's existing semantic port through Claude 6.34.0 was the adaptation
 baseline. The unrelated local edit in Claude's `docs/claude-code-compat.md`
 was left untouched and excluded from the comparison.
 
@@ -24,7 +25,8 @@ was left untouched and excluded from the comparison.
 Verification keys used below:
 
 - **P1:** `tests/test_protocol.py` — both-origin fixtures, selector agreement,
-  JSON, contract block, transport, fixed Sol, clean-tree launcher behavior.
+  JSON, contract block, transport, fixed Sol, clean-tree launcher behavior,
+  and legacy/final-touch quality stamps from both origins.
 - **O1:** `tests/test_orchestration.py` — interruption, stop, phase budget,
   open-ended plan-defect hold, invalid answers, explicit timeout, and apply.
 - **D1:** `tests/wfdash/test_core.py`, `test_components.py`,
@@ -120,7 +122,7 @@ tests and preserved it.
 | 6.28.6 | Owner stored atomically; legacy pid-only event recovery | X/C | A Codex owner is already one immutable string. Codex queue filenames are separate, so Claude legacy pid events are never consumed; no compatibility shim is needed. | D2 |
 | 6.28.7 | Page owner and queue stamp share one validated resolution | X/C | `Handler.owner` is the single value used by `/api/state`, queue display, and every stamp. Claude `live_owner()` session-record reconciliation is inapplicable because no supported Codex local session registry exists. | D2, D3 |
 
-## Release matrix: 6.28.8 through 6.34.0
+## Release matrix: 6.28.8 through 6.35.0
 
 | Claude release | Shipped behavior | Class | Codex implementation and status | Verification |
 |---|---|---:|---|---|
@@ -134,6 +136,7 @@ tests and preserved it.
 | 6.33.0 | Foreman's own model is a written hint | X | Codex-native hint is `gpt-5.6-sol` with high reasoning, repeated where a successor foreman task is opened. | P1, S1 |
 | 6.33.1 | Claude Fable price and cache-read accounting | C | Omitted. Codex exposes no stable priced task-token feed; the dashboard already renders cost telemetry explicitly unavailable. | D1 |
 | 6.34.0 | Claude creates and activates a host-specific worktree during planning | X/C | Adapted to Codex's task-owned environment: planning uses the checkout or Codex worktree chosen when the task is created and never creates a nested Claude worktree or invokes GenroPy activation. The autonomous launcher continues to resolve the plan attached to its task root. | P1, S1 |
+| 6.35.0 | One final touch closes review findings; QA-fix boundary is decisions, not size; one-task/workflow sizing at issue analysis and planning | P/W/X | `quality-check` owns the approved corrections table, one commit, notes, and a fresh Sol Light/low re-check restricted to touched files; all closing consumers follow it. Unresolved design and unbuilt surfaces are planned together as one phase. The stamp adds an optional final-touch outcome without breaking old readers. One-task handoff uses a self-contained brief and explicit Codex task creation on Sol/high, or a complete chat fallback; no home prompt file or `.phased/` is written. | P1, S1 |
 
 ## Intentional runtime divergences
 
@@ -159,6 +162,12 @@ tests and preserved it.
 7. **Workspace provisioning is task-owned.** Codex chooses local checkout or
    worktree when a task is created. The plugin never creates a nested
    Claude-specific workspace or injects host activation state during planning.
+8. **One-task briefs use the product handoff.** An explicit One task answer
+   approves the displayed brief, repository, starting state, and Sol/high
+   settings. Codex creates that user-owned task when the tool and project are
+   available; otherwise it returns the whole prompt in chat. Claude's global
+   prompt-file location is not imported. Planning never creates a task merely
+   because it recommends one, and issue analysis never launches one.
 
 None of these differences changes the committed plan layout, marker lifecycle,
 notes, model labels, contract tests, quality stamp, repair outcome, or phase

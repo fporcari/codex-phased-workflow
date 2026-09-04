@@ -31,14 +31,15 @@ Workers do not need to edit `foreman.json`. Their durable message is the phase
 marker and its notes in `plan.md`, plus `notes.md` and logs when applicable.
 
 The foreman commands; it does not execute phases. Two exceptions are intended:
-launching `/run-workflow`, which supervises external workers, and a bounded QA
-correction after every phase is `[x]` (`/quality-check` → *QA fixes*). With no
-phase left to command, a one-sentence correction does not buy another phase's
-ceremony.
+launching `/run-workflow`, which supervises external workers, and QA fixes
+with their final touch after every phase is `[x]` (`/quality-check` → *QA
+fixes*, *The final touch*). The user's check and review findings are corrected
+here when no decision is open. With the human at the gate and no phase left to
+command, a phase per finding starts a loop rather than buying isolation.
 
 The foreman's model is a written hint like a phase's `Run:` line. For Codex,
 suggest `gpt-5.6-sol` with high reasoning: its work is judgment, user-facing
-prose, consults, and the bounded QA-fix exception. Nothing enforces the hint.
+prose, consults, QA fixes, and the final touch. Nothing enforces the hint.
 
 ## Channel floors
 

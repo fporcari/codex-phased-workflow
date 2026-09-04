@@ -5,7 +5,7 @@ description: Quality check of the finished workflow — QA pass with the user, n
 
 # Quality Check
 
-The quality half of closing a workflow: verify the plan is complete, put the QA checks in the user's hands, review the whole diff at the depth the user chooses, and stamp the plan with the outcome. `/finalize-workflow` reads the stamp and does the rest — lessons, archive, consolidation. **Never edit source code here** — findings get reported and delegated. Two declared exceptions: the bounded QA correction below and Step 3's naming review.
+The quality half of closing a workflow: verify the plan is complete, put the QA checks in the user's hands, review the whole diff at the depth the user chooses, and stamp the plan with the outcome. `/finalize-workflow` reads the stamp and does the rest — lessons, archive, consolidation. **Never edit source code here** beyond three declared exceptions on decisions already taken: Step 2's QA fixes, Step 3's naming review, and Step 5's final touch. An unresolved decision or a surface the plan never built goes to `/resume-workflow`, grouped into one phase rather than one per finding.
 
 **Usage:** `/quality-check` — or `/quality-check light|extended|panel|none` to pre-answer Step 5's depth question (the argument is the user's call made early; everything else still runs).
 
@@ -37,20 +37,20 @@ All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifi
 
 `verify.md` is the sibling of `review.md`, not a duplicate: this list is what the user must *exercise*, `review.md` is what they must *judge*. Present both.
 
-**QA fixes.** A defect the user reports while exercising the list is fixed in
-this task when it is a correction and not a design — the second foreman
-exception (`foreman.md`). The boundary is whether the user's sentence is the
-whole decision: a wrong term, label, field rule or default, or a missing
-catalog entry qualifies. No new table, column, migration, engine change,
-surface, or callable; touch only files earlier phases touched plus catalogs
-that serve them, such as localization or CSS.
+**QA fixes.** Once every phase is `[x]`, a defect the user reports while
+exercising the list is fixed in this task — the second foreman exception
+(`foreman.md`). The boundary is decisions, not size: no decision is open when
+the user's sentence or the plan's `Decisions:` already says what right looks
+like. A helper, foreign-key rule, seed, or test can be a correction just as a
+label can. A phase is needed only for a decision the user does not settle when
+asked in one sentence, or a surface the plan never built, such as a new table,
+page, or migration.
 
 Apply the correction, run the suite and lint on the touched files, and make one
 `wf: qa fix — <one line>` commit per QA round. Record each under `## QA fixes`
-in `notes.md` as *what the user saw → what changed*. Beyond that boundary — a
-decision the user has not supplied, a test nobody wrote, or a surface nobody
-built — the correction is a phase appended through `/resume-workflow`; say
-which road it took and why.
+in `notes.md` as *what the user saw → what changed*. Finalize reads these as
+missing-plan lessons. Beyond that boundary, route the findings together through
+`/resume-workflow` for one phase; say which road each took and why.
 
 ## Step 3: Naming review
 
@@ -60,7 +60,7 @@ Autonomous runs accumulate `wf:phase-N:new` markers on the callables the phases 
 git add -A && git commit -q -m "wf: method naming review"
 ```
 
-**This is the one step of the quality check that edits source, by design** — the edits are the user's naming decisions plus marker removal, and the commit lands before the reviews so what gets reviewed is what will ship. The ref's sweep is blocking: a marker that survives here reaches the parent branch.
+**This naming step edits source by design** — the edits are the user's naming decisions plus marker removal, and the commit lands before the reviews so what gets reviewed is what will ship. The ref's sweep is blocking: a marker that survives here reaches the parent branch.
 
 ## Step 4: Review the scope
 
@@ -88,6 +88,11 @@ review as explicit focus points and the stamp; deep measurement
 not here.
 
 ## Step 5: Pre-commit review
+
+First check `notes.md` for a recorded `## Final touch` table. After a final
+touch, skip the whole-diff agent and depth selection below; continue with the
+scoped Light/low re-check and stamp. Resuming the skill must not restart the
+review/fix loop.
 
 **When the plan lives in another checkout (its own worktree), or the cwd is outside the plan's root**, do not review in-session: silently run the shipped verify agent in a clean sub-session at the plan's root —
 
@@ -129,8 +134,27 @@ misread. Deliver it as the register's report page where the session can render
 one. Then ONE question — *"The pre-commit review found N problems. Fix them
 first, or shall I stamp the check as it stands?"* (recommended: fix first) — on
 the degraded chat-only path with the register's detail option folded in
-(*Expand the details before deciding*), never as a second question. Fixing is
-delegated, not done here; then re-run `/quality-check`.
+(*Expand the details before deciding*), never as a second question. *Fix them
+first* takes the final-touch road below, in this task.
+
+**The final touch.** Once every phase is `[x]`, fix the review's findings here
+on the QA-fix boundary above. Present ONE table — finding → fix → files — and
+ask any open decision in one sentence alongside its row. On the user's ok,
+apply the corrections, run the suite and lint on touched files, and commit
+once as `wf: final touch — <N> corrections`. Record the table under
+`## Final touch` in `notes.md`, including rows sent to `/resume-workflow`:
+unresolved decisions and unbuilt surfaces are grouped into ONE phase, never
+one phase per finding. A recall-biased review followed by a new phase per
+finding creates a new diff to review indefinitely; the final touch closes that
+loop without reopening settled design.
+
+Then run only one re-check: **Light at effort `low`**, with a fresh read-only
+`gpt-5.6-sol` reviewer scoped to the files the final touch touched. Re-exercise
+the `verify.md` items those files serve with the user. This is a scope/effort
+choice, not Claude light mode; the reviewer still receives the relevant
+contracts. Never restart Extended or Panel on this branch after the final
+touch, including on a resumed quality check. Report any remaining findings
+and proceed to Step 6 with their actual outcome, not an assumed clean verdict.
 
 This is the only whole-diff review on the "Merge into parent" and "Commit only" close-out paths — `/pull-request` adds a maintainer-grade one only on the PR path.
 
@@ -139,7 +163,7 @@ This is the only whole-diff review on the "Merge into parent" and "Commit only" 
 Record the outcome as the stamp `/finalize-workflow` reads (`contracts.md` → *The quality-check stamp*): append to `plan.md`, under a `## Quality check` heading (created on first use, one line appended per run — the last line governs):
 
 ```
-> Quality check: <ISO timestamp> — commit <short HEAD hash> — review <extended|light|panel|none|agent>, QA <done|declined|none>, findings <N confirmed, M dismissed | none>
+> Quality check: <ISO timestamp> — commit <short HEAD hash> — review <extended|light|panel|none|agent>, QA <done|declined|none>, findings <N confirmed, M dismissed | none>, final touch <N corrections | none>
 ```
 
 The hash is HEAD at stamp time — it is what lets finalize detect a stale check when commits land after it. Commit the stamp alone:
@@ -152,6 +176,6 @@ Close with the stamp line repeated in chat and the next step: *"Quality check st
 
 ## Rules
 
-- **NO source code editing** — report findings and delegate fixes. The two exceptions, each in its own `wf:` commit, are Step 2's bounded QA corrections and Step 3's user-approved naming review
+- **NO source code editing** beyond three exceptions, each in its own `wf:` commit: Step 2's QA fixes, Step 3's user-approved naming review, and Step 5's final touch. The QA-fix boundary governs corrections; unresolved decisions and unbuilt surfaces go to `/resume-workflow` as one phase
 - A finding never blocks the stamp: the user decides to fix first or stamp as-is, and the stamp records what was found either way
 - The stamp is written even when every answer was "no" — a declined QA and a `none` review are facts finalize must see, not omissions

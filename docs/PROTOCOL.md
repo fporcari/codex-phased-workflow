@@ -52,6 +52,26 @@ reference:`, `Files:`, `Decisions:`, and plan-authored contract tests. A
 sanctioned change is recorded in `notes.md`; close compares those fields and
 tests with both the current copies and the plan commit.
 
+## Quality closure
+
+When every phase is `[x]`, corrections on decisions already taken stay in the
+quality-check task: user-reported QA fixes and one final touch for review
+findings. Size alone does not make a correction a phase. Open design decisions
+or surfaces the plan never built go to planning together, as one phase once
+the decisions are settled.
+
+The final touch lands as `wf: final touch — <N> corrections`; its
+finding → fix → files table is preserved under `## Final touch` in `notes.md`.
+The re-check is Light/low on touched files and their human verification items,
+not another Extended/Panel pass over the branch. Finalization reads both
+`## QA fixes` and `## Final touch` for lessons.
+
+The latest `> Quality check:` line under `## Quality check` remains the stamp.
+Claude 6.35.0 adds the trailing `final touch <N corrections | none>` outcome;
+older stamps remain readable, with the missing outcome unrecorded rather than
+implicitly zero. The canonical stamp lives in `refs/contracts.md`. The
+selector preserves the whole stamp without interpreting its outcome fields.
+
 ## Runtime mapping
 
 Plans keep the Claude-era model labels because deployed Claude versions already

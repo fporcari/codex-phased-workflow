@@ -29,7 +29,7 @@ def run_selector(selector: Path, *arguments: str, cwd: Path | None = None) -> su
 class ProtocolCompatibilityTest(unittest.TestCase):
     def test_parity_inventory_accounts_for_every_baseline_release(self) -> None:
         expected = set(
-            (FIXTURES / "claude-6.34.0-releases.txt").read_text().splitlines()
+            (FIXTURES / "claude-6.35.0-releases.txt").read_text().splitlines()
         )
         inventory = (ROOT / "docs" / "PARITY.md").read_text()
         actual = set(re.findall(r"^\| (\d+\.\d+\.\d+) \|", inventory, re.MULTILINE))
@@ -158,6 +158,39 @@ class ProtocolCompatibilityTest(unittest.TestCase):
         codex_plan = FIXTURES / "codex-originated" / "plan.md"
         self.assertIn("recommendation: next: 2", run_selector(SELECTOR, str(claude_plan)).stdout)
         self.assertIn("recommendation: next: 1", run_selector(SELECTOR, str(codex_plan)).stdout)
+
+    def test_quality_stamp_round_trips_old_and_final_touch_outcomes(self) -> None:
+        legacy = (
+            "2026-09-03T10:00:00Z — commit abc1234 — review extended, "
+            "QA done, findings 2 confirmed, 1 dismissed"
+        )
+        current = (
+            "2026-09-04T10:00:00Z — commit def5678 — review extended, "
+            "QA done, findings 2 confirmed, 1 dismissed, final touch 2 corrections"
+        )
+        configured = os.environ.get("CLAUDE_PHASED_WORKFLOW_SELECTOR")
+        reference = Path(configured) if configured else DEFAULT_REFERENCE
+        selectors = [SELECTOR] + ([reference] if reference.exists() else [])
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "plan.md"
+            for fixture in sorted(FIXTURES.glob("*/plan.md")):
+                for stamps in ((legacy,), (current,), (legacy, current)):
+                    path.write_text(
+                        fixture.read_text() + "\n## Quality check\n"
+                        + "\n".join(f"> Quality check: {stamp}" for stamp in stamps)
+                        + "\n"
+                    )
+                    for selector in selectors:
+                        with self.subTest(origin=fixture.parent.name, stamps=stamps, selector=selector):
+                            validation = run_selector(selector, "--validate", str(path))
+                            self.assertEqual(validation.returncode, 0, validation.stdout + validation.stderr)
+                            result = run_selector(selector, "--json", str(path))
+                            self.assertEqual(result.returncode, 0, result.stderr)
+                            payload = json.loads(result.stdout)
+                            self.assertEqual(payload["meta"]["quality_check"], stamps[-1])
+                            original = json.loads(run_selector(selector, "--json", str(fixture)).stdout)
+                            self.assertEqual(payload["phases"], original["phases"])
+                            self.assertEqual(payload["next"], original["next"])
 
     def test_claude_reference_selector_agrees_when_available(self) -> None:
         configured = os.environ.get("CLAUDE_PHASED_WORKFLOW_SELECTOR")

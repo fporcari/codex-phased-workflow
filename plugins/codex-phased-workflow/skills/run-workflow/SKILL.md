@@ -120,9 +120,9 @@ failed repair, no durable progress, invalid state, or the session budget ends
 the run.
 
 When every phase is `[x]`, point to `/quality-check`, then
-`/finalize-workflow`. What the user's QA check turns up is fixed by the foreman
-as a bounded QA correction when it is a correction, not appended as a phase
-(`/quality-check` → *QA fixes*).
+`/finalize-workflow`. What the user's QA check and pre-commit review turn up is
+fixed by the foreman as QA fixes and a final touch on a decided design, never
+appended as a phase per finding (`/quality-check` → *QA fixes*, *The final touch*).
 
 Never merge, publish, deploy, delete user data, or perform another external
 side effect merely because the workflow is autonomous. Those actions still need

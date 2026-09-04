@@ -1,14 +1,14 @@
 ---
 name: write-workflow
-description: Write a phased work plan from the current conversation — branch, plan directory, first commit
+description: Turn the current conversation into a phased work plan or a self-contained brief for one fresh Codex task
 ---
 
 # Write Workflow
 
-Plan a work session, then open the branch and commit the plan. The plan is the **only** deliverable.
+Plan the work, then hand it off as one task or open the workflow branch and commit the plan. The plan or one-task brief is the **only** deliverable here.
 
-1. **NEVER edit source code.** Read anything; write nothing outside `.phased/`.
-2. **Do not implement.** The user runs `/execute-phase` afterwards.
+1. **NEVER edit source code.** Read anything; repository writes are confined to `.phased/` on the approved workflow road. The one-task road writes no repository files.
+2. **Do not implement here.** One task receives the approved brief; a workflow proceeds through `/execute-phase` or `/run-workflow`.
 
 **Shared conventions:** read `<PLUGIN_ROOT>/refs/common.md` and
 `<PLUGIN_ROOT>/refs/contracts.md` once at start. Read
@@ -83,6 +83,27 @@ what comes next, not the files. Mechanical work can remain one phase however
 wide; three unknown root causes are three phases. A coherent phase whose diff
 is too large to review at once remains one phase and gets `> Batches:`.
 
+**One task, or a workflow.** Recon, `Pattern:`, a re-runnable `Done:`, and
+contract tests give a plan its quality; phase boundaries do not. One context
+can carry the same contract without separate workers rediscovering helpers.
+A workflow pays only when one of three holds: the work does not fit one
+context; an intermediate result changes what comes next and needs a human
+gate; or the user needs unattended execution with checkpoints and repair.
+When none holds, recommend **One task** at the presentation gate below.
+The brief is self-contained for a fresh task that has read none of this chat:
+
+```text
+Run in ONE fresh Codex task — gpt-5.6-sol, high reasoning — in <repository>, from <approved starting state>.
+# Objective: <what done looks like for the user>
+## Decided: <all settled decisions; do not reopen them>
+## Code: <file → copy-adapt pattern as path:symbol; mark nonexistent files as new>
+## Constraints: <Must not break: contracts>; the repository's AGENTS.md applies; ask before adding a dependency
+## Method: contract tests first (<existing paths or complete test bodies below>), then implement; run <lint command> and <test command>; loop until green
+## Done: <all re-runnable criteria, merged into one list>
+## Deliverable: <approved branch or task-owned worktree>, one commit, no .phased/; report in at most 10 lines what changed, what was verified, and what remains
+## Stop: an unlisted decision → ask; Done not green after two attempts → stop and report what is red and why
+```
+
 **Write nothing about code you have not seen.** `Files:`, `Pattern:`, and any
 `Decisions:` assertion about current behaviour rest on the Step 1 inspection.
 Files that do not exist yet are ordinary plan output, not claims about the tree.
@@ -99,9 +120,10 @@ returns at most two concrete candidates with verified paths, or exactly
 
 **Decisions.** `/execute-phase` has a single approval gate, so every choice needing the user's judgment — naming, signatures, library, API shape, trade-offs — is settled *here*, batched into Codex user-input prompt, and recorded in `Decisions:`. For a shared table, settle the row-set boundary (which records appear and which are excluded). For UI composition, settle the intended hierarchy and relationships while leaving the mockup-negotiable presentation details to the interactive phase. A phase containing "decide later" is not ready. On a real architectural fork, give a recommendation with its trade-off; say if it is the kind of choice a judge panel would decide better, and let the user ask for one.
 
-**Contract tests.** One more option, asked with the Decisions batch: author
-the tests of EVERY phase now, while the whole design sits in one context —
-into `.phased/active/<slug>/tests/phase-N/`, committed with the plan, each
+**Contract tests.** One more option, asked with the Decisions batch: draft
+the tests of EVERY phase now, while the whole design sits in one context.
+On the workflow road, write them only after approval, at Step 5, into
+`.phased/active/<slug>/tests/phase-N/`, committed with the plan, each
 phase's `Done:` opening with "the plan's tests for this phase, copied into
 the test tree, pass". Recommend it on refactoring and other well-specified
 work — behaviour that must survive is exactly what a test states best;
@@ -115,7 +137,9 @@ intact. Authoring them is plan-time work: derive each phase's tests from its
 with the repository's narrow test/lint command before the plan commit, and
 check every import path and fixture they depend on against the repository. An
 import no existing file uses is a premise to verify against the loader, not a
-convention to assume. Present the tests with the plan.
+convention to assume. Present the tests with the plan. On the one-task road,
+include the test bodies or existing paths in the brief instead; do not create
+`.phased/` to hold a draft.
 
 **The consumer question.** When `.phased/roadmap.md` has unstarted
 macro-phases — or the discussion names later work that will consume this
@@ -159,7 +183,22 @@ no parallel or grouped phases.
 
 **Present the plan**, each phase with its `Run:` line, and iterate until the user approves.
 
-**Close the presentation with the branch line and the gate line** (`common.md` → *The gate line*):
+**The presentation gate.** When none of the three workflow reasons holds,
+show the brief, repository, starting state, and `gpt-5.6-sol` / `high` hint.
+Offer **One task** first — create a fresh Codex task with this approved brief
+and those model settings — and **Workflow** second. On the explicit One task
+answer, skip Steps 4–6: no branch switch, plan directory, or commit here.
+Resolve the saved project through the available project-listing tool and use
+the Codex task-creation tool, following its workspace rules and the approved
+starting state. Never invent a project or ref. Task creation is not a subagent
+launch and is authorized only by this explicit answer, not by the sizing
+recommendation. If creation is unavailable or the project cannot be resolved,
+return the complete brief in chat for the user to open; do not substitute an
+unrelated project or write a prompt into the user's home directory. The brief
+does not authorize merge, deployment, or other external effects.
+
+On the Workflow answer, or when a workflow reason holds, **close with the
+branch line and gate line** (`common.md` → *The gate line*):
 
 > Branch: \<what will happen\>   (say so if you would rather have it otherwise)
 > **Proceed?** On your ok, I create the branch and write `.phased/active/<slug>/plan.md`.

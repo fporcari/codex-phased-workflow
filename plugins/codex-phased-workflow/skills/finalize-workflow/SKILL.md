@@ -46,7 +46,7 @@ The tree must be clean either way. If `git status --short` shows anything, repor
 
 **This step is mandatory and runs before anything is archived or removed.** `.phased/` never reaches the parent, and the workflow branch is deletable at Step 5 — so this is the only path by which anything learned during the run outlives it. Skipping it silently is how the loop stops learning across runs.
 
-Scan the plan and its `notes.md` for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); the per-phase `## Phase N` rationale entries the executing chats left there (`foreman.md` → *The foreman*) — that file is how the run's reasoning outlives its executor chats; the `## QA fixes` entries (`/quality-check` → *QA fixes*) — each is a check the plan did not author, and the lesson is the missing `Verify:` or `Decisions:` line, never the fix itself; `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
+Scan the plan and its `notes.md` for: `> Repaired:` notes (a root cause *plus why earlier attempts missed it* — the highest-value kind, it encodes a trap); the per-phase `## Phase N` rationale entries the executing chats left there (`foreman.md` → *The foreman*) — that file is how the run's reasoning outlives its executor chats; the `## QA fixes` and `## Final touch` entries (`/quality-check` → *QA fixes*, *The final touch*) — each is a check the plan did not author, and the lesson is the missing `Verify:` or `Decisions:` line, never the fix itself; `new-pattern` phases that landed cleanly (now there IS a reference); `> Review:` findings that revealed a convention rather than a one-off; and pattern references that proved **wrong**.
 
 One bar: **would this have saved a future session real work, in a way the repo and git history don't already say?** Framework quirks, non-obvious API behaviour, "we do it like X here" → yes. Bugs specific to this diff, anything visible by opening the file → no.
 
@@ -140,6 +140,6 @@ worktree list` shows stale ones and `git worktree remove <path>` clears them.
 
 ## Rules
 
-- **NO source code editing** — the quality work, its findings and its two exceptions (naming review and bounded QA fixes) live in `/quality-check`
+- **NO source code editing** — the quality work, its findings and its three exceptions (naming review, QA fixes, final touch) live in `/quality-check`
 - Show what will happen before any git operation; be especially careful with resets
 - Never delete the workflow branch before Step 3 has run: it is the only thing carrying the run's lessons out

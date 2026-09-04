@@ -147,10 +147,11 @@ it, they never restate it. `/quality-check` appends it to `plan.md` under a
 last line governs) and commits it alone as `wf: quality check — <depth>`:
 
 ```
-> Quality check: <ISO timestamp> — commit <short HEAD hash> — review <extended|light|panel|none|agent>, QA <done|declined|none>, findings <N confirmed, M dismissed | none>
+> Quality check: <ISO timestamp> — commit <short HEAD hash> — review <extended|light|panel|none|agent>, QA <done|declined|none>, findings <N confirmed, M dismissed | none>, final touch <N corrections | none>
 ```
 
-The stamp records outcomes, never grants: a declined QA and a `none` review
+Legacy stamps without `final touch` remain valid; absence means unrecorded,
+not zero corrections. The stamp records outcomes, never grants: a declined QA and a `none` review
 are stamped too — facts, not omissions. The `commit` hash is HEAD at stamp
 time; `/finalize-workflow` gates on the stamp and treats commits landed
 after the stamp's own commit as staleness — the check saw a tree that no
