@@ -9,7 +9,10 @@ Review the branch as the maintainer who has to approve it, then open the PR — 
 
 ## Step 1: Base branch and issue
 
-Default base: the `Parent:` line of the active plan if there is one (`python3 "<PLUGIN_ROOT>/scripts/next-phase.py" --resolve`; from outside the plan's root, `--plans` + `git -C` per `common.md` → *Plan location*), else `develop` when `git rev-parse --verify origin/develop` succeeds, else `main`. Ask the user via Codex user-input prompt with that default first and "(Recommended)", verify the chosen branch exists (`git ls-remote --heads origin <base>`), and use it as `<base>` throughout.
+Resolve the PR target with `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`.
+Use the repository default unless the user explicitly chose another target.
+The plan's Parent is its workflow integration boundary, not automatically the
+PR base. Verify the chosen remote ref before reviewing the delivery diff.
 
 Issue number: use the number named in the user's invocation, otherwise the leading number of the branch name (`123-fix-login` → 123); none → proceed without one.
 
@@ -28,7 +31,11 @@ Then read `git diff --name-only origin/<base>...HEAD` and the full `git diff ori
 
 ## Step 3: Review
 
-**3.1 — Delegated pass.** Run the built-in `code-review` skill (Skill tool) on the branch diff at effort `medium` (`high` for large or risky diffs). Its confirmed findings feed Step 4.
+**3.1 — Independent pass.** Reuse traceable quality-check evidence from notes.md
+for the reviewed revision. Review changes since that revision and affected
+consumers; unchanged covered code does not need a duplicate full pass. Missing
+evidence or new requirements require review of the uncovered scope. Preserve
+unresolved findings and check the delivery requirements below every time.
 
 **3.2 — Maintainer checks** (what only this workflow knows):
 

@@ -122,6 +122,9 @@ def parse_lines(lines):
     dashboard cuts a block out of plan.md by number instead of re-deriving
     the format.
     """
+    lines = list(lines)
+    structured = any(line.rstrip() == '## Work Plan' for line in lines)
+    in_work_plan = not structured
     phases, meta = [], {}
     bounds = []
     current = None
@@ -134,6 +137,7 @@ def parse_lines(lines):
             pending = None
             continue
         if line.startswith('## '):
+            in_work_plan = line.rstrip() == '## Work Plan'
             current, pending = None, None
             quality = bool(QUALITY_HEAD_RE.match(line))
             bounds.append((n, line.startswith('## Work Plan')))
@@ -144,14 +148,14 @@ def parse_lines(lines):
                 meta['quality_check'] = m.group(1).strip()
             continue
         m = PHASE_RE.match(line)
-        if m:
+        if m and in_work_plan:
             phases.append(Phase(*m.groups(), line=n))
             current, pending = phases[-1], None
             bounds.append((n, True))
             continue
         m = META_RE.match(line)
         if m and current is None:
-            meta[m.group(1).lower()] = m.group(2).strip()
+            meta.setdefault(m.group(1).lower(), m.group(2).strip())
             continue
         if current is None:
             continue
@@ -432,7 +436,7 @@ def contract_block(lines, phases, bounds, n):
     if p is None:
         return None
     end = next((b for b, _ in bounds if b > p.line), p.line + 1)
-    out, taking = [], False
+    out, taking, indent = [], False, 0
     for raw in lines[p.line:end - 1]:
         line = raw.rstrip()
         if not line.strip():
@@ -441,8 +445,13 @@ def contract_block(lines, phases, bounds, n):
         if line.lstrip().startswith('>'):
             taking = False
             continue
+        depth = len(line) - len(line.lstrip())
+        if taking and depth > indent:
+            out.append(line)
+            continue
         if CONTRACT_FIELD_RE.match(line):
             taking = True
+            indent = depth
             out.append(line)
             continue
         if FIELD_RE.match(line):
@@ -522,7 +531,14 @@ def validate(path, phases, text):
     config_header = None        # (lineno, cells)
     config_rows = []            # [(lineno, cells)]
 
+    headers = {}
     for idx, line in enumerate(lines, 1):
+        header = META_RE.match(line)
+        if header and not heading:
+            key, value = header.group(1).lower(), header.group(2).strip()
+            if key in headers and headers[key] != value:
+                add(idx, 'error', 'conflicting duplicate %s header' % header.group(1))
+            headers.setdefault(key, value)
         if line.startswith('Parent:'):
             has_parent = True
         if line.startswith('Mode:'):

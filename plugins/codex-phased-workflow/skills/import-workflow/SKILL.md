@@ -38,6 +38,11 @@ Then read the whole source, for the mapping in Step 3.
 
 ## Step 3: Map onto the plan format
 
+Apply `<PLUGIN_ROOT>/refs/execution-policy.md` to fresh handoffs before deriving
+phases: recommend one task or one durable phase when sufficient. Preserve an
+existing plan and its history; report redundant boundaries without silently
+removing them. Never append a mandatory coherence-review phase.
+
 Produce the plan in the `/write-workflow` format — same `Pattern:` / `Files:` / `Decisions:` / `Details:` / `Done:` fields, same phase markers.
 
 **Preserve, do not rewrite.** Phase states (`[x]`, `[!]`, `[~]`, `[>]`) and every note the source carries — `> Done:`, `> Files:`, `> Issue:`, `> Attempted:`, `> Repaired:`, `> Review:`, `> Verify:` — come across verbatim. They are the record of what happened; re-deriving them would be inventing history. A `## Roadmap` section in the source moves to `.phased/roadmap.md`, and a `## Suggested execution config` table comes across as-is.

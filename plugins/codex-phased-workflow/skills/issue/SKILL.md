@@ -25,7 +25,7 @@ gh issue view <issue-number> --json title,body,labels,state,comments --jq '{titl
    unattended execution with checkpoints and repair. A fix whose decisions
    the issue already settles and whose diff can be understood in one sitting
    meets none: recommend one fresh Codex task with a complete prompt,
-   `gpt-5.6-sol` / `high`, and no workflow. Recon and a re-runnable `Done:`
+   <Sol for decided work or Astra for engineering> / `high`, and no workflow. Recon and a re-runnable `Done:`
    remain necessary on either road.
 
 ## Step 3: Present and hand off
@@ -40,7 +40,7 @@ task itself, so asking *"shall I go ahead?"* promises something it cannot do:
 
 - **One task** → *"Next step: one fresh Codex task, no workflow — here is its
   prompt."* Give a self-contained prompt with the repository, starting state,
-  `gpt-5.6-sol` / `high` hint, objective, settled decisions, verified files and
+  <Sol for decided work or Astra for engineering> / `high` hint, objective, settled decisions, verified files and
   copy-adapt patterns, constraints, contract tests first,
   exact lint/test commands, re-runnable Done criteria, and the deliverable.
   Stop for an unlisted decision or after two attempts leave Done red. Do not

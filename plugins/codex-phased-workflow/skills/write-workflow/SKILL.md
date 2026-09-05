@@ -22,7 +22,7 @@ an interactive plan closes with is specified once in
 ```bash
 git branch --show-current
 git rev-parse --show-toplevel
-git rev-parse --verify origin/develop >/dev/null 2>&1 && echo develop || echo main
+gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
 ```
 
 **On a feature branch** — read what is already there (`git log origin/<base>..HEAD --oneline`, `git diff --stat origin/<base>...HEAD`, the full diff, and `gh issue view <number>` if the branch starts with one), summarise it, then ask: *"What do you want to plan on this branch?"*
@@ -39,6 +39,11 @@ tool's real interface; arithmetic stated without computing it. Verify those
 premises now, before questions and phase sizing.
 
 This same fork decides the branch in Step 4 — remember which side you are on.
+
+Before the automation fork, apply `<PLUGIN_ROOT>/refs/execution-policy.md` to choose
+one engineer task, one durable phase, several phases or macro-phases. Present the
+shape and reason once. If one task wins, present the self-contained brief from
+Step 3 and stop at its handoff gate; skip workflow mode/channel questions.
 
 ## Step 2: The automation fork
 
@@ -80,25 +85,19 @@ Extract from the conversation: objective, phases, files per phase, pattern refer
 that can be executed, verified, and reviewed without an intermediate result
 forcing the remainder to be re-planned. Count the points where a result changes
 what comes next, not the files. Mechanical work can remain one phase however
-wide; three unknown root causes are three phases. A coherent phase whose diff
+wide; investigate coupled unknown root causes before choosing boundaries. A coherent phase whose diff
 is too large to review at once remains one phase and gets `> Batches:`.
 
-**One task, or a workflow.** Recon, `Pattern:`, a re-runnable `Done:`, and
-contract tests give a plan its quality; phase boundaries do not. One context
-can carry the same contract without separate workers rediscovering helpers.
-A workflow pays only when one of three holds: the work does not fit one
-context; an intermediate result changes what comes next and needs a human
-gate; or the user needs unattended execution with checkpoints and repair.
-When none holds, recommend **One task** at the presentation gate below.
-The brief is self-contained for a fresh task that has read none of this chat:
+**One-task brief.** Apply the shared delivery-shape policy; carry the settled
+contract into a self-contained brief for a fresh engineer session:
 
 ```text
-Run in ONE fresh Codex task — gpt-5.6-sol, high reasoning — in <repository>, from <approved starting state>.
+Run in ONE fresh Codex task — <gpt-5.6-sol for decided work | gpt-6-astra for engineering>, high reasoning — in <repository>, from <approved starting state>.
 # Objective: <what done looks like for the user>
 ## Decided: <all settled decisions; do not reopen them>
 ## Code: <file → copy-adapt pattern as path:symbol; mark nonexistent files as new>
 ## Constraints: <Must not break: contracts>; the repository's AGENTS.md applies; ask before adding a dependency
-## Method: contract tests first (<existing paths or complete test bodies below>), then implement; run <lint command> and <test command>; loop until green
+## Method: contract tests first (<existing paths or complete test bodies below>), then implement; run <lint command> and <test command>; allow one diagnosed correction, then stop if still red
 ## Done: <all re-runnable criteria, merged into one list>
 ## Deliverable: <approved branch or task-owned worktree>, one commit, no .phased/; report in at most 10 lines what changed, what was verified, and what remains
 ## Stop: an unlisted decision → ask; Done not green after two attempts → stop and report what is red and why
@@ -161,12 +160,12 @@ land the system at that border.
 
 *Interactive plans — the boundary is **"something a human can look at exists"***. A phase ends where the user can open the thing and judge it, so phases come out **bigger** — as a consequence, not as a goal. The point is what it makes impossible: a phase cannot close on half a button, so no verification step can be a trivial "try this for me". The user's own example — customer and supplier master tables *with their UI* — is one phase here, not a model phase plus a UI phase.
 
-*Autonomous plans — one concern, ~6-8 files, closed by a re-runnable `Done:`* (the stricter rules live in `<PLUGIN_ROOT>/refs/write-workflow-autonomous.md`).
+*Autonomous plans — one coherent result, closed by a re-runnable `Done:`* (the stricter rules live in `<PLUGIN_ROOT>/refs/write-workflow-autonomous.md`).
 
 Either way:
 1. Too small to verify alone (a model half, a migration, a schema)? Merge it into the phase that makes it verifiable — a phase boundary the user cannot verify is a boundary in the wrong place.
 2. **Split** — two concerns in one phase: just write more phases, no tag.
-3. **`vast`** — one indivisible concern with a genuinely large surface (>~10 files). At execution a read-only fan-out maps it, so the file ceiling is lifted for it only.
+3. **`vast`** — one indivisible concern with a broad surface. Use bounded reconnaissance and reviewable batches; file count alone never requires a split.
 4. **`ui`** — a phase whose deliverable is judged by eye: a page, a form, a dashboard. Interactive plans only (an autonomous run has nobody to approve a mockup). At execution the approval gate includes a rendered HTML mockup iterated with the user, and verification adds a browser pass plus a fidelity judge against that mockup (`contracts.md` → *Verification*). Tag it here so the executing chat knows before exploring.
 
 The split-vs-`vast` call and the `ui` tag materially change execution — batch
@@ -179,12 +178,12 @@ no parallel or grouped phases.
 **Run hint.** Every phase carries a `Run: <model> / <effort>` line: advice for the human who opens that chat, never something the plan enforces — the model is picked when the session starts, before any skill has read the plan. That is also why it is written down instead of only said here: the chat that needs it is opened days later, and by then this conversation is gone.
 
 - **Effort** — start low and climb only for a reason. A phase whose `Decisions:` and `Pattern:` are settled is where high effort buys least: it gets spent re-exploring what planning already decided. `low` mechanical, `medium` the standard phase, `high` where real design judgment survives inside the phase, `xhigh` a wide multi-file surface, `max` practically never (overthinking, diminishing returns). Levels copied from an older plan rarely transfer — decide them here, for this plan.
-- **Model label** — write `opus` by default and `fable` only where inventive work survives *after* the approval gate: architecture to invent, an unknown surface, or no obvious decomposition. These are portable protocol labels so the same plan runs in Claude and Codex. Codex maps both to `gpt-5.6-sol`, with the listed effort controlling depth. Never author `sonnet`; it is accepted only when resuming a legacy Claude plan.
+- **Model label** — write `opus` by default and `fable` only where inventive work survives *after* the approval gate: architecture to invent, an unknown surface, or no obvious decomposition. These are portable protocol labels so the same plan runs in Claude and Codex. Codex maps `opus` to `gpt-5.6-sol` and `fable` to `gpt-6-astra`, with effort controlling depth separately. Never author `sonnet`; it is accepted only when resuming a legacy Claude plan.
 
 **Present the plan**, each phase with its `Run:` line, and iterate until the user approves.
 
 **The presentation gate.** When none of the three workflow reasons holds,
-show the brief, repository, starting state, and `gpt-5.6-sol` / `high` hint.
+show the brief, repository, starting state, and the selected Sol/Astra model and reasoning hint.
 Offer **One task** first — create a fresh Codex task with this approved brief
 and those model settings — and **Workflow** second. On the explicit One task
 answer, skip Steps 4–6: no branch switch, plan directory, or commit here.
@@ -280,7 +279,7 @@ Verify it is not empty (`git show --stat HEAD`). An empty commit means `.phased/
 
 ```
 Plan written to .phased/active/<slug>/plan.md (<N> phases), committed on <branch>.
-relayed → this task is the foreman, now titled `wf:<slug>:foreman`; launch /execute-phase in a new task and this one stays the board. A successor foreman task uses gpt-5.6-sol / high.
+relayed → this task is the foreman, now titled `wf:<slug>:foreman`; launch /execute-phase in a new task and this one stays the board. A successor foreman uses Sol for coordination or Astra for material replanning, per execution-policy.md.
 in-chat → no relay: /execute-phase runs here, phase after phase, every gate in this conversation.
 Phase 1 — suggested: <model>, effort <effort>.
 ```

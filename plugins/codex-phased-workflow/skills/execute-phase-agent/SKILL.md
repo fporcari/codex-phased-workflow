@@ -10,7 +10,8 @@ Execute ONE phase of the active plan unattended: implement, test, record the out
 **Base skill: execute-phase** — the same work with nobody to answer a question. This variant states only the unattended constraints; the mechanics shared by both modes (phase selection, implementation discipline, outcome formats, the phase commit, the WIP checkpoints) live in `<PLUGIN_ROOT>/refs/phase-execution.md` and are not restated here.
 
 **Usage:** `bash "<PLUGIN_ROOT>/scripts/agent-session.sh" execute-phase-agent`
-— or `/run-workflow` for the whole plan. Both launch fixed `gpt-5.6-sol` inside
+— or `/run-workflow` for the whole plan. The run launcher maps opus to Sol and fable to Astra; direct agent-session
+launches default to `gpt-5.6-sol` and accept `--model gpt-6-astra`, inside
 Codex `workspace-write`; do not hand-launch this worker with a lower model.
 
 **Non-negotiables:**
@@ -56,7 +57,10 @@ Per the shared core. The mode-specific outcomes, decided here instead of asked: 
 
 ## Step 2: Implement
 
-Per the shared core, scaling exploration to the **Effort** column of the execution config table (missing table → `high`): `low` only the listed files; `medium` + immediate references; `high` up to 2 Explore subagents and the surrounding package; `xhigh`/`max` up to 3 plus a cross-package consistency pass.
+Use the shared core's reconnaissance for the assigned role. Low effort starts
+with listed files, but inspect callers and dependencies whenever evidence requires
+it. High effort does not automatically launch exploration agents. Escalate an
+unknown premise before implementing a guessed design.
 
 ## Step 3: Write tests
 
@@ -67,7 +71,7 @@ Phases with contract tests start from them: copy `tests/phase-N/` verbatim and m
 Green signal = test suite + linter scoped to the touched files. Both must pass.
 
 - **Green** → Step 5.
-- **Failure** → up to **3 fix attempts**. Each: find the root cause before patching (grep the callers — one fix in the shared function beats a patch in the failing path), fix, re-run.
+- **Failure** → **one diagnosed local correction**. Each: find the root cause before patching (grep the callers — one fix in the shared function beats a patch in the failing path), fix, re-run.
 - **No-progress detector**: identical failure signature twice in a row → stop early.
 - **Revert, don't stack**: an attempt that leaves the signal worse gets undone (`git checkout -- <files it touched>` returns to `HEAD`, the Step 0.4 restore point) before re-diagnosing. Patch-on-patch also poisons what `/repair-phase` receives.
 - **Budget exhausted or stuck** → `[!]` with the shared core's notes. Leave the failing code **in place** — repair needs to see it.

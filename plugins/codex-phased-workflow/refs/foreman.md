@@ -38,7 +38,7 @@ here when no decision is open. With the human at the gate and no phase left to
 command, a phase per finding starts a loop rather than buying isolation.
 
 The foreman's model is a written hint like a phase's `Run:` line. For Codex,
-suggest `gpt-5.6-sol` with high reasoning: its work is judgment, user-facing
+suggest `gpt-5.6-sol` for coordination or `gpt-6-astra` for material replanning, with high reasoning: its work is judgment, user-facing
 prose, consults, QA fixes, and the final touch. Nothing enforces the hint.
 
 ## Channel floors

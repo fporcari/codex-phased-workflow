@@ -42,6 +42,62 @@ class OrchestrationTest(unittest.TestCase):
         mock.write_text(textwrap.dedent(source))
         mock.chmod(0o755)
 
+    def test_three_phases_and_attempt_budget(self):
+        plan = ("Parent: main\nMode: autonomous\n## Work Plan\n" +
+                "".join(f"- [ ] **Phase {n}**: item {n}\n  - Done: test passes\n" for n in range(1, 4)) +
+                "## Suggested execution config\n| Phase | Effort | Model |\n|---|---|---|\n" +
+                "".join(f"| Phase {n} | low | {'fable' if n == 2 else 'opus'} |\n" for n in range(1, 4)))
+        for budget, done in ((None, 3), ("1", 1), ("0", 0)):
+            with self.subTest(budget=budget):
+                temporary, repo, plan_dir, bin_dir = self.repository(plan)
+                self.addCleanup(temporary.cleanup)
+                self.write_mock(bin_dir, """\
+                    #!/usr/bin/env python3
+                    from pathlib import Path
+                    import subprocess
+                    import sys
+                    root = Path(sys.argv[sys.argv.index('-C') + 1])
+                    plan = next(root.glob('.phased/active/*/plan.md'))
+                    pending = plan.read_text().split('- [ ] **Phase ')[1].split('**')[0]
+                    expected = 'gpt-6-astra' if pending == '2' else 'gpt-5.6-sol'
+                    assert sys.argv[sys.argv.index('-m') + 1] == expected
+                    plan.write_text(plan.read_text().replace('- [ ]', '- [x]', 1))
+                    subprocess.run(['git', '-C', str(root), 'add', '.'], check=True)
+                    subprocess.run(['git', '-C', str(root), 'commit', '-qm', 'fixture outcome'], check=True)
+                    print('finished')
+                """)
+                env = self.environment(bin_dir, RUN_WORKFLOW_SESSION_TIMEOUT="0")
+                if budget is not None:
+                    env['RUN_WORKFLOW_MAX_ATTEMPTS'] = budget
+                result = subprocess.run(['bash', str(LAUNCHER)], cwd=repo, env=env,
+                                        text=True, capture_output=True, timeout=20)
+                self.assertEqual((plan_dir / 'plan.md').read_text().count('- [x]'), done, result.stdout)
+                self.assertEqual(result.returncode == 0, budget is None, result.stderr)
+                self.assertEqual(subprocess.check_output(['git', 'status', '--porcelain'], cwd=repo, text=True), '')
+
+    def test_direct_agent_model_selection_and_floor(self):
+        temporary, repo, _, bin_dir = self.repository()
+        self.addCleanup(temporary.cleanup)
+        self.write_mock(bin_dir, """\
+            #!/usr/bin/env python3
+            import sys
+            print('MODEL=' + sys.argv[sys.argv.index('-m') + 1])
+        """)
+        for model in (None, 'gpt-6-astra', 'unsupported-model'):
+            with self.subTest(model=model):
+                command = ['bash', str(PLUGIN / 'scripts/agent-session.sh'), 'quality-check-agent']
+                if model:
+                    command += ['--model', model]
+                result = subprocess.run(command, cwd=repo,
+                                        env=self.environment(bin_dir, CODEX_AGENT_SESSION_TIMEOUT='0'),
+                                        text=True, capture_output=True, timeout=10)
+                if model == 'unsupported-model':
+                    self.assertEqual(result.returncode, 2)
+                    self.assertNotIn('MODEL=', result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('MODEL=' + (model or 'gpt-5.6-sol'), result.stdout)
+
     def test_worker_timeout_ends_as_interruption_without_dirtying_plan(self):
         temporary, repo, _, bin_dir = self.repository()
         self.addCleanup(temporary.cleanup)
@@ -86,7 +142,7 @@ class OrchestrationTest(unittest.TestCase):
             import sys
 
             args = sys.argv[1:]
-            assert "gpt-5.6-sol" in args
+            assert "gpt-6-astra" in args
             checkout = Path(args[args.index("-C") + 1])
             prompt = args[-1]
             plan = next((checkout / ".phased" / "active").glob("*/plan.md"))

@@ -7,7 +7,7 @@ description: Execute the next phase from the active work plan
 
 Execute the next uncompleted phase. **This is the heart of interactive mode**, not a lesser `/run-workflow`: ONE approval gate up front (plan + all questions batched), then execution. An ambiguity in the plan itself takes the route its `Channel:` selects (`refs/phase-execution.md` → *Routing a decision*): to the foreman on `relayed` and legacy plans, straight to the user at this gate on `in-chat`.
 
-Two kinds of interruption, and only one is legitimate: a question that needs a **decision** — ask it, take the answer, resume. Asking the user to **try something trivial** mid-phase is not a question, it is the symptom of a phase that was cut too small; the cure is sizing, and manual checks belong in `Verify:` at the end. Execution stays on `gpt-5.6-sol`; the plan's portable `opus`/`fable` label changes guidance, never lowers model quality.
+Two kinds of interruption, and only one is legitimate: a question that needs a **decision** — ask it, take the answer, resume. Asking the user to **try something trivial** mid-phase is not a question, it is the symptom of a phase that was cut too small; the cure is sizing, and manual checks belong in `Verify:` at the end. Resolve the model before execution: portable `opus` means `gpt-5.6-sol`, `fable` means `gpt-6-astra`; preserve the selected effort and quality gates.
 
 **The phase's `Run: <model> / <effort>` line** is the plan's advice for this session, decided during planning. Neither value can be changed from inside the session, so read it rather than reconsider it:
 
@@ -120,7 +120,7 @@ Handing over is three things, in order:
 
 1. **Checkpoint** exactly as the shared core (`refs/phase-execution.md` → *WIP checkpoints*) specifies — `partial` commit and structured `> WIP:` note together, never one without the other.
 2. **Write down what four keys cannot hold**: decisions taken and why, roads tried that do not work, what the next chat must not redo — into `notes.md` under the phase's `## Phase N` heading (`foreman.md` → *The foreman*, per-phase rationale), committed with the checkpoint. This is the part that dies with the chat if nobody writes it.
-3. **Stop.** Say to open a new chat on `/wf:execute-phase`, and touch nothing further: from here the working tree belongs to whoever picks the phase up.
+3. **Stop.** Say to open a new chat on `/execute-phase`, and touch nothing further: from here the working tree belongs to whoever picks the phase up.
 
 The arriving chat finds the phase `[>]`, and may reach back to this one while it is alive — the shared core's *Resuming a `[>]` phase* says how, and answering that message is the last thing this chat does.
 

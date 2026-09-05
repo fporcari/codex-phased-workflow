@@ -5,6 +5,7 @@ roadmap, durable logs, and the owner-private launcher transport.
 """
 
 import datetime
+import importlib.util
 import json
 import os
 import pathlib
@@ -40,13 +41,21 @@ def repo_root(repo):
     return os.path.realpath(git(repo, "rev-parse", "--show-toplevel").strip())
 
 
+_READER = None
+
+
 def selection(repo, plan=None, text=None):
-    command = ["python3", str(SELECTOR), "--json"]
+    global _READER
+    if _READER is None:
+        spec = importlib.util.spec_from_file_location('wf_next_phase', SELECTOR)
+        _READER = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_READER)
     if text is not None:
-        command.append("-")
-    elif plan is not None:
-        command.append(str(plan))
-    return json.loads(run(command, repo, stdin=text))
+        return _READER.payload('-', *_READER.parse_lines(text.splitlines()))
+    if plan is None:
+        return json.loads(run(["python3", str(SELECTOR), "--json"], repo))
+    path = pathlib.Path(plan)
+    return _READER.payload(str(path), *_READER.parse(path))
 
 
 def _decorate(payload):
@@ -194,8 +203,8 @@ def text_stamps(repo, plans=None):
     return {"plans": stamps, "roadmap": road}
 
 
-def active_plan(repo):
-    plans = [entry for entry in all_plans(repo) if entry["state"] == "active"]
+def active_plan(repo, plans=None):
+    plans = [entry for entry in (all_plans(repo) if plans is None else plans) if entry["state"] == "active"]
     here = os.path.realpath(repo)
     local = [
         entry
@@ -215,7 +224,12 @@ def _foreman(entry):
         return None
     path = pathlib.Path(entry["dir"]) / "foreman.json"
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            return None
+        value.setdefault("title", value.get("foreman"))
+        value.setdefault("claimed_at", value.get("since"))
+        return value
     except (OSError, ValueError):
         return None
 
@@ -263,18 +277,14 @@ def lifecycle(repo):
     return rows
 
 
-def _plan_commit(repo, slug):
+def _plan_commit(repo, entry):
+    branch = entry.get("branch") or "HEAD"
+    path = entry["path"]
+    if path.startswith(branch + ":"):
+        path = path[len(branch) + 1:]
     return run(
-        [
-            "git",
-            "log",
-            "-1",
-            "--format=%h",
-            "--all",
-            "-E",
-            f"--grep=^wf: plan for {slug}$",
-        ],
-        repo,
+        ["git", "log", "-1", "--format=%h", "--follow", "--diff-filter=A", branch, "--", path],
+        entry.get("dir") or repo,
         check=False,
     ).strip() or None
 
@@ -283,7 +293,7 @@ def workflow_lifecycle(repo, entry):
     payload = entry["payload"]
     phases = payload["phases"]
     proofs = {
-        "planned": _plan_commit(repo, entry["slug"]),
+        "planned": _plan_commit(repo, entry),
         "executing": (
             f"{len(phases)}/{len(phases)} phases closed"
             if phases and all(phase["status"] == "x" for phase in phases)
@@ -365,7 +375,7 @@ class Board:
 
     def state(self):
         plans = all_plans(self.repo)
-        active = active_plan(self.repo)
+        active = active_plan(self.repo, plans)
         finished = latest_finished(plans)
         display = active or finished
         active_slug = active["slug"] if active else None

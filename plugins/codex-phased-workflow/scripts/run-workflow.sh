@@ -36,6 +36,9 @@ fi
 python3 "$selector" --validate "$plan" || exit 2
 
 transport="$(python3 "$selector" --transport "$plan")" || exit 2
+if [[ "${PHASED_RUN_LOCK_PID:-}" != "$$" ]]; then
+  exec python3 "$script_dir/runtime.py" lock "$transport-writer.lock" bash "$0" "$@"
+fi
 install -d -m 700 "$(dirname "$transport")"
 stop_request="$transport-stop-request"
 consult_answer="$transport-foreman-answer"
@@ -48,12 +51,30 @@ phase_count() {
 }
 
 unfinished_count() {
-  grep -cE '^- \\[[ !~>]\\] \\*\\*Phase' "$plan" 2>/dev/null || true
+  grep -cE '^- \[[ !~>]\] \*\*Phase' "$plan" 2>/dev/null || true
 }
 
 recommendation() {
   python3 "$selector" "$plan" |
     awk -F'recommendation: ' '/^recommendation: / {print $2}'
+}
+
+phase_model_for() {
+  local label
+  label="$(awk -F'|' -v number="$1" '
+    /^## Suggested execution config/ {table=1; next}
+    table && /^## / {table=0}
+    table && $2 ~ "^[[:space:]]*Phase[[:space:]]+" number "[[:space:]]*$" {
+      value=$4
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      print tolower(value)
+      exit
+    }
+  ' "$plan")"
+  case "$label" in
+    fable) printf 'gpt-6-astra\n' ;;
+    *) printf 'gpt-5.6-sol\n' ;;
+  esac
 }
 
 phase_effort() {
@@ -211,19 +232,7 @@ run_codex() {
 }
 
 record_session_log() {
-  local external_log="$1"
-  local internal_name="$2"
-  local before_head="$3"
-  local after_head
-  local relative
-
-  after_head="$(git -C "$checkout" rev-parse HEAD 2>/dev/null)" || return
-  [[ "$after_head" != "$before_head" && -s "$external_log" ]] || return
-  mkdir -p "$plan_dir/log"
-  cp "$external_log" "$plan_dir/log/$internal_name"
-  relative="${plan_dir#"$checkout"/}/log/$internal_name"
-  git -C "$checkout" add -- "$relative"
-  git -C "$checkout" commit --amend --no-edit -q
+  python3 "$script_dir/runtime.py" record "$plan" "$3" "$1" "$2"
 }
 
 run_phase() {
@@ -232,6 +241,7 @@ run_phase() {
   local prompt
   local log_file
   effort="$(phase_effort "$number")"
+  phase_model="$(phase_model_for "$number")"
   log_file="$transport-phase-$number.log"
   prompt="Use the execute-phase-agent skill from $plugin_root/skills/execute-phase-agent/SKILL.md. Execute exactly Phase $number of the active portable plan at $plan. Preserve the .phased protocol exactly. Finish with exactly one durable outcome: the phase becomes [x] with Done and Files notes and one phase commit; it becomes [!] with Issue and Attempted notes and one failure commit; an attributable earlier regression reopens its owning phase as [!]; or an unattributable red baseline marks Phase $number [~] with a Blocked note. Demonstrate Done with tests and lint actually run. Do not start another phase."
   echo "EVENT: phase-started:$number:model=$phase_model:effort=$effort"
@@ -242,6 +252,7 @@ run_repair() {
   local number="$1"
   local prompt
   local log_file
+  phase_model="$(phase_model_for "$number")"
   log_file="$transport-repair-$number.log"
   prompt="Use the repair-phase-agent skill from $plugin_root/skills/repair-phase-agent/SKILL.md. Repair exactly the first [!] phase in the active portable plan at $plan. Preserve the .phased protocol. Finish with [x] plus a Repaired note and one repair outcome commit, or keep [!] and add Repair attempted. Do not touch another phase."
   echo "EVENT: repair-started:$number:model=$phase_model:effort=max"
@@ -251,6 +262,10 @@ run_repair() {
 initial_done="$(phase_count x)"
 initial_unfinished="$(unfinished_count)"
 session_limit=$((initial_unfinished * 2 + 2))
+if [[ -n "${RUN_WORKFLOW_MAX_ATTEMPTS:-}" ]]; then
+  numeric_or_exit max-attempts "$RUN_WORKFLOW_MAX_ATTEMPTS"
+  session_limit="$RUN_WORKFLOW_MAX_ATTEMPTS"
+fi
 max_landings=2147483647
 if [[ -n "${RUN_WORKFLOW_MAX_PHASES:-}" ]]; then
   numeric_or_exit max-phases "$RUN_WORKFLOW_MAX_PHASES"
@@ -288,11 +303,11 @@ while true; do
       run_phase "$number"
       exit_code=$?
       sessions=$((sessions + 1))
-      record_session_log "$transport-phase-$number.log" "phase-$number.txt" "$before_head"
       if (( exit_code != 0 )); then
         echo "EVENT: run-end:codex-exit-$exit_code:phase=$number"
         exit "$exit_code"
       fi
+      record_session_log "$transport-phase-$number.log" "phase-$number.txt" "$before_head" || exit 1
       after_done="$(phase_count x)"
       if (( after_done > before_done )); then
         landed=$((landed + 1))
@@ -302,6 +317,8 @@ while true; do
       elif grep -qE "^- \\[~\\] \\*\\*Phase $number\\*\\*:" "$plan"; then
         echo "EVENT: phase-blocked:$number"
         exit 1
+      elif [[ "$(recommendation)" == attention:*"[!]"* ]]; then
+        echo "EVENT: phase-regression:$number"
       else
         echo "EVENT: run-end:no-progress:phase=$number"
         exit 1
@@ -309,6 +326,10 @@ while true; do
       ;;
     attention:\ *)
       number="$(printf '%s\n' "$state" | sed -E 's/^attention: ([0-9]+).*/\1/')"
+      if [[ "$state" == *"[~]"* ]]; then
+        echo "EVENT: run-end:blocked:phase=$number"
+        exit 1
+      fi
       if phase_has_note "$number" "Repair attempted"; then
         echo "EVENT: run-end:repair-exhausted:phase=$number"
         exit 1
@@ -352,15 +373,18 @@ while true; do
       run_repair "$number"
       exit_code=$?
       sessions=$((sessions + 1))
-      record_session_log "$transport-repair-$number.log" "repair-$number.txt" "$before_head"
       if (( exit_code != 0 )); then
         echo "EVENT: run-end:codex-repair-exit-$exit_code:phase=$number"
         exit "$exit_code"
       fi
+      record_session_log "$transport-repair-$number.log" "repair-$number.txt" "$before_head" || exit 1
       after_done="$(phase_count x)"
       if (( after_done > before_done )); then
         landed=$((landed + 1))
         echo "EVENT: phase-repaired:$number"
+      else
+        echo "EVENT: run-end:repair-no-progress:phase=$number"
+        exit 1
       fi
       ;;
     resume-candidate:*|blocked:*)

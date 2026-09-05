@@ -53,6 +53,10 @@ the codebase or flagged as unverifiable.
 
 ## Step 3: Map the decision tree
 
+First apply `<PLUGIN_ROOT>/refs/execution-policy.md`. One engineer task needs
+acceptance and constraints, not workflow mode/channel questions. For a workflow,
+continue with the mode fork below.
+
 Every question here exists to fill a field of the plan. Know which one before you ask:
 
 | Field | What the question settles |

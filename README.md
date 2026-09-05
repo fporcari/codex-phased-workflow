@@ -23,12 +23,12 @@ outcomes and consolidates only after a whole-diff quality gate and final touch.
 - portable `opus`/`fable` model labels in plans.
 
 Once the phases are done, corrections on a decided design stay in the quality
-check: one approved final-touch table and commit, followed by a Light/low
-re-check of touched files. New surfaces or unresolved design are grouped into
+check: one approved final-touch table and commit, followed by a risk-appropriate
+re-check of the delta and affected consumers. New surfaces or unresolved design are grouped into
 one phase, never one per review finding.
 
-Codex maps all code-writing labels, including legacy `sonnet`, to
-`gpt-5.6-sol`. The label stays unchanged on disk so Claude can resume the same
+Codex maps `opus` and legacy `sonnet` to `gpt-5.6-sol`, and `fable` to
+`gpt-6-astra` for engineering. The label stays unchanged on disk so Claude can resume the same
 plan. See [the protocol contract](docs/PROTOCOL.md).
 
 ## Claude Code and Codex architecture
@@ -66,7 +66,7 @@ flowchart TB
 | Workers inside one runtime tree | Child agents/sessions can exchange live messages | Codex subagents can exchange live messages with their parent task | Progress can be relayed immediately |
 | Autonomous phase isolation | Fresh `claude -p` session per phase | Fresh ephemeral `codex exec` session per phase | Both start with clean context |
 | Foreman ↔ autonomous worker dialogue | Claude session tools can provide a live return channel when available | Separate `codex exec` processes do not currently expose a portable live channel back to the app task | Codex uses committed markers, notes, logs, and `EVENT:` lines as the authoritative return path |
-| Model selection | Portable `opus`/`fable`; legacy `sonnet` accepted | Every code-writing, repair, and review worker uses `gpt-5.6-sol`; effort varies | Model labels remain unchanged on disk |
+| Model selection | Portable `opus`/`fable`; legacy `sonnet` accepted | Sol for decided work, Astra for engineering; effort varies independently | Model labels remain unchanged on disk |
 | Autonomous permissions | Claude auto permission mode | Codex `workspace-write` with no automatic escalation approval | Out-of-scope operations fail and return to the foreman |
 | Independent judges | Claude agent manifests | Fixed judge prompts dispatched to fresh Codex subagents | Same fresh-eyes review semantics, different packaging |
 | Plugin-relative paths | Claude plugin-root environment | Codex resolves the plugin directory from the loaded skill path | Runtime paths never enter `.phased/` |
@@ -107,10 +107,10 @@ updates, verification, and Claude handoff instructions.
 1. `scope-workflow` for a decision-heavy idea, or start from a clear request.
 2. `write-workflow` builds the contract and offers one fresh Codex task when
    a workflow is not justified. That task receives a self-contained brief on
-   `gpt-5.6-sol` / `high`, with no `.phased/`. Otherwise choose mode and channel,
+   Sol for decided work or Astra for engineering, with no `.phased/`. Otherwise choose mode and channel,
    create the branch, and commit the plan.
 3. `execute-phase` runs one interactive phase, or `run-workflow` launches a
-   fresh Sol session for each autonomous phase.
+   fresh Sol/Astra session selected by each autonomous phase.
 4. `quality-check` reviews the complete result, applies approved QA fixes and
    final-touch corrections, then performs the scoped Light re-check.
 5. `finalize-workflow` archives the plan and proposes the final consolidation.
@@ -125,7 +125,7 @@ adaptation, see [the parity inventory](docs/PARITY.md).
 
 - Autonomous workers use Codex `workspace-write` without automatic escalation approval, never a
   sandbox bypass.
-- Code-writing, repair, and review use `gpt-5.6-sol`; only effort varies.
+- Choose Sol for decided work and routine review, Astra for engineering and justified specialist review; preserve the full contract and attempt limit.
 - External effects such as merges, deploys, publication, and destructive
   cleanup remain outside autonomous authority.
 - Every plugin skill and manifest is validated in CI, alongside protocol

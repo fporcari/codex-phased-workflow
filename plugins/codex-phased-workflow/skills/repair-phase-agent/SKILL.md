@@ -9,7 +9,8 @@ Base skill: repair-phase. Read `<PLUGIN_ROOT>/skills/repair-phase/SKILL.md` and 
 
 **Launched by `/run-workflow`** (at most once per phase), or through
 `bash "<PLUGIN_ROOT>/scripts/agent-session.sh" repair-phase-agent`. Both use
-fixed `gpt-5.6-sol` inside Codex `workspace-write`; never hand-launch a lower
+`gpt-5.6-sol` by default for direct sessions; `--model gpt-6-astra` selects engineering.
+The run launcher follows the phase label for repair too, inside Codex `workspace-write`; never hand-launch a lower
 implementation model.
 
 ## What the environment changes

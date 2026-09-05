@@ -25,10 +25,10 @@ Then resolve the two things every step below depends on:
 
 ```bash
 BASE=$(git log -1 --diff-filter=A --format=%H -- <plan path>)   # the commit that ADDED the plan
-git rev-list --count "$BASE"^..<parent>                         # 0 => BASE is the branch point
+git rev-list --count <parent>.."$BASE"^                         # 0 => no pre-plan branch commits
 ```
 
-`BASE` is the workflow's base: everything after it belongs to this run, everything before it does not. That second command tells you which shape you are in — **dedicated branch** (the plan commit *is* the branch point: the branch is the workflow) or **adopted branch** (the branch already carried commits, which must survive untouched). Step 5 differs between the two; nothing else does.
+`BASE` is the workflow's base: everything after it belongs to this run, everything before it does not. That second command tells you which shape you are in — **dedicated branch** (no branch-only commit precedes the plan: the branch is the workflow) or **adopted branch** (the branch already carried commits, which must survive untouched). Step 5 differs between the two; nothing else does.
 
 All phases `[x]` → proceed. Otherwise report the incomplete ones (warn specifically that a `[>]` may be a dead session) and ask whether to finalize anyway (default: no).
 
@@ -38,7 +38,9 @@ Grep the plan for the stamp — the last `> Quality check:` line under `## Quali
 
 - **No stamp** → the quality work has not run. Ask ONE `Codex user-input prompt`: **Run `/quality-check` first** (Recommended — this close would otherwise carry no QA pass, no naming review, no whole-diff review) / **Close without it** (its price stated in the option: nobody has seen the whole diff at once, and any `wf:phase-N:new` markers ride into the parent). On the first option, stop here and say to run `/quality-check`, then `/finalize-workflow` again. On the second, proceed — and say so again in the close-out, in one line.
 - **Stamp present but stale** — commits landed after the stamp's own commit (compare the stamp's `commit <hash>` against `git log <hash>..HEAD`, the stamp commit itself excluded) → same question, phrased as stale: the check saw a tree that no longer exists.
-- **Stamp current** → proceed, quoting it in one line (review depth, QA answer, findings).
+- **Stamp current** → read the Final touch ledger and findings disposition. Proceed
+  only with satisfied acceptance or explicit user acceptance of named residual
+  risks; a stamp alone never grants that acceptance. Quote the actual outcome.
 
 The tree must be clean either way. If `git status --short` shows anything, report it and ask whether to include it before going on; do not sweep it in silently.
 

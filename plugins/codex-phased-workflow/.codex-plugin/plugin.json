@@ -1,6 +1,6 @@
 {
   "name": "codex-phased-workflow",
-  "version": "1.1.0+codex.20260904165701",
+  "version": "1.2.0",
   "description": "A Codex-native phased development workflow with a portable .phased protocol shared with Claude Code.",
   "author": {
     "name": "Francesco Porcari"

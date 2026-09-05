@@ -75,14 +75,11 @@ take-command mechanics live once in `foreman.md` → *The foreman*):
 
 ## Step 2: Attribute the work
 
-Each completed phase committed its own work, so attribution is **exact — never infer it**:
-
-```bash
-git log --oneline "$BASE"..HEAD
-git show --stat <phase commit>
-```
-
-For each `[x]` phase, compare its commit's files against its own `> Files:` note. For each pending phase, there is simply no commit yet.
+Attribute a phase from the union of its outcome, partial/batch and repair commits
+in `BASE..HEAD`, grouped by the explicit `wf(phase N):` token. Compare that union
+with its recorded Files notes; the final commit alone omits earlier batches.
+Inspect ambiguous or missing attribution and report it as unknown rather than
+assigning unrelated commits by proximity. Pending phases have no outcome yet.
 
 Then look at `git status --short`. **A clean tree is the normal state.** Uncommitted changes are legitimate only while a phase is `[>]` — anything else is a finding, not context: a session that died before committing, or hand edits nobody recorded.
 
@@ -91,7 +88,11 @@ Two distinct kinds of drift, and they mean different things:
 1. **Unlisted files** — inside a phase's commit but absent from its `> Files:`. The work landed but the record is wrong, which silently breaks later baseline attribution and `/repair-phase`.
 2. **Uncommitted leftovers** — in the tree, in no commit, with no `[>]` phase to explain them.
 
-Flag a phase as **oversized** when its commit spans more than ~10 files, covers unrelated areas (model + UI + tests for different features), or is too large to review as one commit. **Exception:** a `vast` phase is intentionally whole — that size is by design, never propose re-phasing it for size alone. For a pending phase the same judgment is a projection from its `Files:`, not a measurement; say which one you are making.
+Flag a phase as **oversized** only when unrelated concerns, an unresolved decision
+boundary or insufficient context make it unsafe to implement and review together.
+File count alone is not a cutoff. Prefer coherent batches for wide mechanical
+work; distinguish measured commits from projected pending scope.
+
 For a phase carrying `> Batches:`, apply that judgment to each batch's partial
 commit, not the phase total: an oversized batch is a finding; a large phase
 made of reviewable batches is not.
@@ -103,7 +104,7 @@ made of reviewable batches is not.
 3. **Coverage** — per `[x]` phase: does its commit match its `> Files:`? Per pending phase: still to do.
 4. **Drift** — the two kinds above, kept apart.
 5. **Oversized phases** — for each, what its commit already contains, what remains, and a proposed split into sub-phases.
-6. **Next step** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, clean up drift — or, when what smells is incoherence between the landed work and the pending phases' premises rather than record drift, `/doctor` for the verdict instead of the suspicion. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`). When it is a fresh successor foreman task, quote `gpt-5.6-sol` / `high` from `foreman.md`. These settings are chosen when the task opens, so the hint is useful only beforehand.
+6. **Next step** — continue (`/execute-phase` or `/run-workflow`), repair (`/repair-phase` on a `[!]`), re-phase, add phases for work that surfaced (Step 4 — the answer when a phase passed and is still wrong), finalize, clean up drift — or, when what smells is incoherence between the landed work and the pending phases' premises rather than record drift, `/doctor` for the verdict instead of the suspicion. When it is `/execute-phase`, quote the next phase's `Run: <model> / <effort>` hint alongside it (older plan without one → `opus` / `high`). When it is a fresh successor foreman task, quote the Sol/Astra choice and reasoning from `foreman.md`. These settings are chosen when the task opens, so the hint is useful only beforehand.
 
 **The board.** On a `Mode: interactive` plan, render points 1 and 6 as the strip specified in `<PLUGIN_ROOT>/refs/board.md` — read it there rather than inferring the shape; it is the single source, shared with `/write-workflow`. Points 3, 4 and 5 stay prose in the reply: they are judgments, and a strip argues badly. On an autonomous plan, no board at all. No `visualize` server → the same rows as a plain list, per the ref.
 

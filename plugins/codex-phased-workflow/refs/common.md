@@ -26,8 +26,8 @@ Codex must preserve the same directory layout, marker vocabulary, note fields,
 branch shape, and phase commits. Runtime details never enter the protocol.
 
 The model words `opus`, `fable`, and legacy `sonnet` are portable compatibility
-labels, not commands to Codex. Codex maps all code-writing labels to
-`gpt-5.6-sol`; `fable` means to retain or raise the listed reasoning effort.
+labels, not commands to Codex. Codex maps `opus` and legacy `sonnet` to
+`gpt-5.6-sol`, and `fable` to `gpt-6-astra`; effort remains independent.
 Codex-authored plans keep these labels so Claude can resume them unchanged.
 
 ## Language

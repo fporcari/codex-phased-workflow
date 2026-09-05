@@ -25,7 +25,7 @@ was left untouched and excluded from the comparison.
 Verification keys used below:
 
 - **P1:** `tests/test_protocol.py` — both-origin fixtures, selector agreement,
-  JSON, contract block, transport, fixed Sol, clean-tree launcher behavior,
+  JSON, contract block, transport, Sol/Astra routing, clean-tree launcher behavior,
   and legacy/final-touch quality stamps from both origins.
 - **O1:** `tests/test_orchestration.py` — interruption, stop, phase budget,
   open-ended plan-defect hold, invalid answers, explicit timeout, and apply.
@@ -49,10 +49,10 @@ tests and preserved it.
 |---|---|---:|---|---|
 | 4.1.0 | Corrections from the external review of 4.0.0 | W | No separately exposed runtime feature; its resulting conventions are embodied in `refs/common.md` and the current skills. | P1, S1 |
 | 5.0.0 | Command surface, plan discovery, workflow branch/workspace lifecycle | P/W | `skills/*`, `refs/common.md`, `next-phase.py --resolve/--plans`; existing Codex packaging uses plugin skills instead of Claude commands. | P1, S1 |
-| 5.1.0 | Unattended run | W/X | `skills/run-workflow`, `scripts/run-workflow.sh`; ephemeral `codex exec`, fixed Sol, `workspace-write`. | P1, O1 |
+| 5.1.0 | Unattended run | W/X | `skills/run-workflow`, `scripts/run-workflow.sh`; ephemeral `codex exec`, Sol/Astra routing, `workspace-write`. | P1, O1 |
 | 5.2.0 | Interactive mode | P/W | `Mode: interactive`, `write-workflow`, `execute-phase`, and selector validation. | P1 |
 | 5.2.1 | Adversarial-review corrections to 5.1–5.2 | W | Preserved in the current execution/repair gates; no independent protocol field. | P1, S1 |
-| 5.3.0 | Per-model autonomous steering | X/C | Portable labels remain; Codex intentionally maps every label to `gpt-5.6-sol` and varies only reasoning effort. Claude model-personality steering is inapplicable. | P1 |
+| 5.3.0 | Per-model autonomous steering | X/C | Portable labels remain; Codex maps opus/legacy sonnet to `gpt-5.6-sol` and fable to `gpt-6-astra`; effort is independent. Claude model-personality steering is inapplicable. | P1 |
 | 5.4.0 | Invocation discipline and scope workflow | W | `skills/scope-workflow`, edit/approval gates in planning and execution. | S1 |
 | 5.5.0 | Claude rename guide and cache bust | C | Claude packaging history is not imported. Codex manifest and install guide carry the Codex plugin identity. | S1 |
 | 5.6.0 | Interactive `Run:` hints and resume board | P/W | `write-workflow`, `resume-workflow`, `refs/board.md`; model labels stay portable. | P1, S1 |
@@ -88,11 +88,11 @@ tests and preserved it.
 | 6.8.0 | Plan-authored executable/skeleton contract tests | P/W | `contracts.md`, planning, execution, doctor, close. | P1, S1 |
 | 6.9.0 | Doctor coherence audit and blind retrofit | W | `doctor`; blind author now reports its `READ:` set. | S1 |
 | 6.10.0 | Future-consumer `Must not break:` contract | P/W | `contracts.md`, planning, doctor, execution/finalization. | P1 |
-| 6.10.1 | Unattended path receives future-consumer contract | W/X | Codex never uses Claude light mode: even `low` runs the full Sol skill and reads the same header/roadmap. | P1 |
+| 6.10.1 | Unattended path receives future-consumer contract | W/X | Codex never uses Claude light mode: even `low` runs the full execution skill and reads the same header/roadmap. | P1 |
 | 6.11.0 | Rolling-wave mini-scopes and coherence judge | P/W | `write-workflow-autonomous.md`, roadmap format, itinerary/contract return shapes. | D1, S1 |
 | 6.12.0 | Producer-to-consumer contracts cross intermediate macros | P/W | `contracts.md`, autonomous planning, quality/finalization coherence. | S1 |
 | 6.12.1 | Session budget cannot starve resumed/repair work | W/X | `run-workflow.sh` bounds attempts separately from landed phases and checks final state before exhaustion. | O1 |
-| 6.13.0 | Sonnet removed from authored palette, legacy accepted | P/X | `next-phase.py` accepts it; planning authors `opus`/`fable`; Codex still runs Sol. | P1 |
+| 6.13.0 | Sonnet removed from authored palette, legacy accepted | P/X | `next-phase.py` accepts it; planning authors `opus`/`fable`; legacy sonnet still maps to Sol. | P1 |
 | 6.14.0 | Doctrine split by consumer | W | `refs/common.md`, `contracts.md`, `foreman.md`; direct citations only. | S1 |
 | 6.15.0 | Messaging channel floors declared | X/C | `foreman.md` declares Codex task/subagent, explicit product message, then disk; Claude CLI version floors are not copied. | S1 |
 | 6.16.0 | Skill doctrine closure has a 1,500-line budget | W | Ported `tests/check_doc_mass.py`; current largest closure is below the ceiling. | S1 |
@@ -112,7 +112,7 @@ tests and preserved it.
 | 6.25.0 | Optional secure dashboard; authenticated reads; server proposes but never acts; checks are read-only | W/X/C | New `dashboard` skill and `scripts/wfdash/`; the Claude visual shell and portable interactions are copied intact. Claude transcript/session/todo/cost inputs are C and render explicit unavailable states. | D1–D3, S1 |
 | 6.26.0 | Per-port cookie, aged one-run dedup, process-safe queue, single selector reader, hardened credential handling, tags and five-way recommendation | W/X | `server.py`, `outbox.py`, `core.py`, `index.html`; plan parsing comes only from `next-phase.py --json`. | D1–D3 |
 | 6.26.1 | Authenticated registry reuse/stale cleanup; atomic dedup; private queue; latest finalized plan chosen by commit time | W/X | Owner-private Codex registry, authenticated probe/one-shot, one locked `append_if_absent`, `0600/0700`, branch-resident latest closed plan in `core.py`. | D1–D3 |
-| 6.27.0 | Row-set/UI intent decisions; refusal layer; deployment-tier ordering; author-time lint; origin diff for tests/fields; valid final config row | P/W | Planning/scope refs and skills updated; close checks plan commit; contract ownership explicit; template row is `Phase N+1`. Claude light-mode prohibition is C because Codex has no light worker—`low` still loads full Sol doctrine. Claude `SendUserFile` is replaced by Codex rendering/chat fallback. | P1, S1 |
+| 6.27.0 | Row-set/UI intent decisions; refusal layer; deployment-tier ordering; author-time lint; origin diff for tests/fields; valid final config row | P/W | Planning/scope refs and skills updated; close checks plan commit; contract ownership explicit; template row is `Phase N+1`. Claude light-mode prohibition is C because Codex has no light worker—`low` still loads full execution doctrine. Claude `SendUserFile` is replaced by Codex rendering/chat fallback. | P1, S1 |
 | 6.28.0 | Contract-field extractor; light-contract preflight; dashboard re-owner; per-uid transport; exact threat model | P/W/X/C | `next-phase.py --contract-block`, close gate, `server.py --probe -O`, per-uid private transport and docs. Light-contract preflight is unnecessary in Codex's always-full worker. | P1, D3, S1 |
 | 6.28.1 | Autonomous `Pattern reference:` protected; shell transport `0700`; plan commit from HEAD; owner-filtered queue | P/W/X | Extractor accepts both pattern spellings, shell uses `install -d -m 700`, close searches plan addition on HEAD, outbox partitions by Codex owner. | P1, D2 |
 | 6.28.2 | Repo-keyed transport; drain returns one-lock served/remaining partition; explicit liveness semantics | W/X | `next-phase.py --transport` keys checkout root; `drain_split` returns its transaction's two halves. Codex does not infer task liveness from a pid; orphan recovery uses the exact stamped thread id after user confirmation. | P1, D2 |
@@ -133,10 +133,10 @@ tests and preserved it.
 | 6.31.0 | Plan-defect consult has no default deadline; repair cannot buy green through an unplanned workaround | W/X | Launcher holds until a normalized answer or stop request unless `RUN_WORKFLOW_CONSULT_TIMEOUT` is explicitly set. Repair enforces a file/surface and verifier-judgment cost bound, records `plan-defect confirmed`, and removes the workaround from the tree. | O1, S1 |
 | 6.31.1 | Consult accepts prefixed or bare case-insensitive verbs; invalid answers keep holding | W/X | `run-workflow.sh` normalizes `plan-defect:` and case, consumes only `repair|apply|stop`, and emits an invalid-answer event without releasing the gate. | O1 |
 | 6.32.0 | Bounded user-reported QA corrections happen inside quality check | W | `quality-check` owns the correction-not-design boundary, targeted suite/lint, one `wf: qa fix` commit per round, and `## QA fixes` notes; finalize reads those as missing-plan lessons. | P1, S1 |
-| 6.33.0 | Foreman's own model is a written hint | X | Codex-native hint is `gpt-5.6-sol` with high reasoning, repeated where a successor foreman task is opened. | P1, S1 |
+| 6.33.0 | Foreman's own model is a written hint | X | Codex-native hints select Sol for coordination or Astra for material replanning, with high reasoning. | P1, S1 |
 | 6.33.1 | Claude Fable price and cache-read accounting | C | Omitted. Codex exposes no stable priced task-token feed; the dashboard already renders cost telemetry explicitly unavailable. | D1 |
 | 6.34.0 | Claude creates and activates a host-specific worktree during planning | X/C | Adapted to Codex's task-owned environment: planning uses the checkout or Codex worktree chosen when the task is created and never creates a nested Claude worktree or invokes GenroPy activation. The autonomous launcher continues to resolve the plan attached to its task root. | P1, S1 |
-| 6.35.0 | One final touch closes review findings; QA-fix boundary is decisions, not size; one-task/workflow sizing at issue analysis and planning | P/W/X | `quality-check` owns the approved corrections table, one commit, notes, and a fresh Sol Light/low re-check restricted to touched files; all closing consumers follow it. Unresolved design and unbuilt surfaces are planned together as one phase. The stamp adds an optional final-touch outcome without breaking old readers. One-task handoff uses a self-contained brief and explicit Codex task creation on Sol/high, or a complete chat fallback; no home prompt file or `.phased/` is written. | P1, S1 |
+| 6.35.0 | One final touch closes review findings; QA-fix boundary is decisions, not size; one-task/workflow sizing at issue analysis and planning | P/W/X | `quality-check` owns the approved corrections table, one commit, notes, and a fresh independent, risk-appropriate check of the correction delta and affected consumers; all closing consumers follow it. Unresolved design and unbuilt surfaces are planned together as one phase. The stamp adds an optional final-touch outcome without breaking old readers. One-task handoff uses a self-contained brief and explicit Codex task creation on Sol or Astra with justified reasoning, or a complete chat fallback; no home prompt file or `.phased/` is written. | P1, S1 |
 
 ## Intentional runtime divergences
 
@@ -153,7 +153,7 @@ tests and preserved it.
    ephemeral transport state, never committed. Codex provides no supported
    local liveness record, so orphan recovery is explicit and user-confirmed.
 4. **No Claude light mode.** Every Codex implementation, repair, verifier, and
-   review worker stays on `gpt-5.6-sol` and loads the full relevant skill even
+   review worker uses the selected Sol/Astra route and loads the full relevant skill even
    at low effort; the Claude-only light-contract failure mode cannot occur.
 5. **Judge packaging is path-based.** Claude resolves namespaced agent manifests;
    Codex loads the shipped prompt under `judges/` into a fresh Sol subagent.
@@ -163,7 +163,7 @@ tests and preserved it.
    worktree when a task is created. The plugin never creates a nested
    Claude-specific workspace or injects host activation state during planning.
 8. **One-task briefs use the product handoff.** An explicit One task answer
-   approves the displayed brief, repository, starting state, and Sol/high
+   approves the displayed brief, repository, starting state, and selected Sol/Astra
    settings. Codex creates that user-owned task when the tool and project are
    available; otherwise it returns the whole prompt in chat. Claude's global
    prompt-file location is not imported. Planning never creates a task merely

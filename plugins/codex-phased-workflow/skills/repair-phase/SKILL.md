@@ -14,7 +14,7 @@ Fresh-eyes repair, in a chat that exists only for it. **The previous session's d
 
 **Non-negotiables:** no questions between the start and the verdict — that is what keeps this cheap for you; ONE commit at the end; one phase per invocation; everything written in English; and always a machine-readable outcome, never a phase left in a state the plan cannot describe.
 
-`/wf:repair-phase-agent` is this same repair with the human replaced by a contract: unattended, `[!]` only, closing on its own.
+`/repair-phase-agent` is this same repair with the human replaced by a contract: unattended, `[!]` only, closing on its own.
 
 ## Step 1: Ask what is wrong
 
@@ -31,7 +31,7 @@ Resolve the active plan (`python3 "<PLUGIN_ROOT>/scripts/next-phase.py" --resolv
 - **Neither** → nothing to repair here: say so and stop.
 - It already has `> Repair attempted:` → say "Repair already attempted for Phase N — the next look is yours" and stop. Never loop repairs.
 
-**Title this chat** `wf:<slug>:repair-N — <phase title>`, with `set_session_title` on `session_id: "self"` (`foreman.md` → *The foreman*). **Not** the phase chat's own `wf:<slug>:phase-N` title: that one is an address, the one the hand-back below sends to, and a second session bearing it would make this chat the addressee of its own outcome. Best-effort, like everything on that channel — no tool, no title, no consequence.
+**Title this chat** `wf:<slug>:repair-N — <phase title>`, with `set_thread_title`, omitting the thread id to target this task (`foreman.md` → *The foreman*). **Not** the phase chat's own `wf:<slug>:phase-N` title: that one is an address, the one the hand-back below sends to, and a second session bearing it would make this chat the addressee of its own outcome. Best-effort, like everything on that channel — no tool, no title, no consequence.
 
 **Then write the marker and commit it**, on the phase:
 
@@ -60,7 +60,7 @@ Under `/run-workflow` there is one more source, and it is the richest: `log/phas
 
 ## Step 4: Fix and converge
 
-Same rules as `/execute-phase-agent` Step 4: green signal = test suite + linter on the touched files; up to **3 fix attempts** with the no-progress detector; then re-check every item of `Done:` literally.
+Same rules as `/execute-phase-agent` Step 4: green signal = test suite + linter on the touched files; **one diagnosed local correction** with the no-progress detector; then re-check every item of `Done:` literally.
 
 Then load `<PLUGIN_ROOT>/judges/phase-verifier.md` and give that shipped prompt
 to ONE fresh read-only Codex subagent scoped to this phase's files. Never invoke

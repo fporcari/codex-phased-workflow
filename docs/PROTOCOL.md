@@ -80,7 +80,7 @@ understand them:
 | Portable label | Codex runtime | Meaning |
 |---|---|---|
 | `opus` | `gpt-5.6-sol` | default strong implementation |
-| `fable` | `gpt-5.6-sol` | inventive work; retain or raise effort |
+| `fable` | `gpt-6-astra` | engineering, coupled diagnosis or difficult implementation; effort selected separately |
 | `sonnet` | `gpt-5.6-sol` | accepted only for legacy plans |
 
 Effort remains `low`, `medium`, `high`, `xhigh`, or `max` and maps directly to

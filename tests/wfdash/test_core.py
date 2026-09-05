@@ -57,6 +57,15 @@ class CoreTest(unittest.TestCase):
         self.assertFalse(state["limits"]["transcripts"])
         self.assertEqual(state["plan"]["phases"][1]["checks"], [])
 
+    def test_claude_foreman_is_read_without_rewriting_it(self):
+        path = self.plan_dir / 'foreman.json'
+        original = json.dumps({'foreman': 'wf:portable:foreman', 'since': '2026-09-05', 'history': []})
+        path.write_text(original)
+        value = core.Board(self.repo).state()['foreman']
+        self.assertEqual(value['title'], 'wf:portable:foreman')
+        self.assertEqual(value['claimed_at'], '2026-09-05')
+        self.assertEqual(path.read_text(), original)
+
     def test_plan_source_and_lifecycle_are_durable(self):
         board = core.Board(self.repo)
         self.assertIn("Phase 2", board.plan_source("portable"))

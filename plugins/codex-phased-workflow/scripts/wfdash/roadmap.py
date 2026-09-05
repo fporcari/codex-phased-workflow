@@ -17,8 +17,8 @@ This module does not read plans: it receives them already read. That way
 import pathlib
 import re
 
-MACRO_RE = re.compile(r'^##\s+Macro-?phase\s+(\d+)\s*[—–:-]\s*(.*)$', re.I)
-MACRO_FIELD_RE = re.compile(r'^\s*[-*]\s*\**(Mini-scope|Ends at)\**\s*:\s*(.*)$', re.I)
+MACRO_RE = re.compile(r'^##\s+Macro(?:-?phase)?\s+(\d+)(?:\s+\(current\))?\s*[—–:-]\s*(.*)$', re.I)
+MACRO_FIELD_RE = re.compile(r'^\s*[-*]\s*\**(Mini-scope|Objective|Ends at)\**\s*:\s*(.*)$', re.I)
 TITLE_RE = re.compile(r'^#\s+(.*)$')
 # `macro2-replica-convergence` -> macro-phase 2. It is the only link between a
 # macro-phase and its plan: no field of a plan names its macro-phase.
@@ -59,7 +59,7 @@ def read_roadmap(repo):
             continue
         m = MACRO_FIELD_RE.match(line)
         if m:
-            key = 'mini_scope' if m.group(1).lower() == 'mini-scope' else 'ends_at'
+            key = 'mini_scope' if m.group(1).lower() in ('mini-scope', 'objective') else 'ends_at'
             current[key] = m.group(2).strip()
     return {'title': title or 'roadmap', 'macros': macros}
 

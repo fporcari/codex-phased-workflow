@@ -6,11 +6,18 @@ description: Run every remaining phase autonomously in a fresh high-quality Code
 # Run workflow
 
 Run the remaining phases through `<PLUGIN_ROOT>/scripts/run-workflow.sh`. Each
-phase and repair gets a fresh ephemeral `codex exec` session using fixed
-`gpt-5.6-sol`, Codex `workspace-write`, and the plan's effort. This chat is the
+phase and repair gets a fresh ephemeral `codex exec` session using
+the selected Sol/Astra model, Codex `workspace-write`, and the plan's effort. This chat is the
 inspector: it owns the live `EVENT:` stream, dashboard requests, plan-defect
 return leg, and graceful stop. The launcher owns worker processes and durable
 logs; neither surface changes the portable `.phased/` state machine.
+
+`RUN_WORKFLOW_MAX_ATTEMPTS=N` caps worker launches in this invocation, including
+repair and provider fallback. Zero launches none. `RUN_WORKFLOW_MAX_PHASES=N`
+limits completed phases; it does not bound repair cost. At the attempt boundary,
+stop with durable state; relaunch needs remaining authority. Existing Repair
+attempted notes still prevent another automatic repair. There is no portable
+currency or soft-budget enforcement; report unknown usage as unavailable.
 
 ## Pre-flight gate
 
@@ -26,8 +33,8 @@ logs; neither surface changes the portable `.phased/` state machine.
    destructive or externally consequential actions that cannot safely run under
    Codex `workspace-write` without an escalation.
 4. Preserve the compatibility model labels in the plan. `opus` and `fable` are
-   portable protocol vocabulary shared with Claude; Codex maps both, plus any
-   legacy `sonnet`, to `gpt-5.6-sol`. Effort remains `low|medium|high|xhigh|max`.
+   portable protocol vocabulary shared with Claude; Codex maps `opus` and
+   legacy `sonnet` to `gpt-5.6-sol`, and `fable` to `gpt-6-astra`. Effort remains `low|medium|high|xhigh|max`.
 5. Read `## Suggested execution config`: every row is `Phase <N>`, and its
    effort is one of `low|medium|high|xhigh|max`. The selector validates the
    table; the launcher reads it by column position. There is no environment

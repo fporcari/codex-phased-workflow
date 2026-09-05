@@ -204,7 +204,7 @@ class ProtocolCompatibilityTest(unittest.TestCase):
                 self.assertEqual(actual.returncode, expected.returncode)
                 self.assertEqual(actual.stdout, expected.stdout)
 
-    def test_autonomous_launcher_uses_sol_and_advances_state(self) -> None:
+    def test_autonomous_launcher_maps_fable_to_astra_and_advances_state(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary = Path(temporary_directory)
             repository = temporary / "repo"
@@ -229,7 +229,7 @@ class ProtocolCompatibilityTest(unittest.TestCase):
                 import sys
 
                 arguments = sys.argv[1:]
-                assert "gpt-5.6-sol" in arguments
+                assert "gpt-6-astra" in arguments
                 assert "model_reasoning_effort=xhigh" in arguments
                 assert "-s" in arguments and "workspace-write" in arguments
                 assert "--approve-for-me" not in arguments
@@ -307,7 +307,7 @@ class ProtocolCompatibilityTest(unittest.TestCase):
                 self.assertIn("-s workspace-write", script)
                 self.assertNotIn("--approve-for-me", script)
 
-    def test_all_direct_worker_entry_points_pin_sol(self) -> None:
+    def test_all_direct_worker_entry_points_document_sol_default(self) -> None:
         for skill_name in (
             "execute-phase-agent",
             "repair-phase-agent",
@@ -366,7 +366,7 @@ class ProtocolCompatibilityTest(unittest.TestCase):
         self.assertIn("exactly ONE **phase commit**", common)
         self.assertIn("Satisfying it has a cost bound", repair)
         self.assertIn("Plan-defect confirmed", repair)
-        self.assertIn("QA fixes", quality)
+        self.assertIn("Collect QA and naming findings without editing", quality)
         self.assertIn("gpt-5.6-sol", foreman)
         self.assertIn("high reasoning", foreman)
         self.assertIn("no default deadline", run)

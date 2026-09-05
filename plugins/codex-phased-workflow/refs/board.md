@@ -40,7 +40,7 @@ message they were drawn in cannot compete with that.
 - **The next phase is the only emphasis** — the first unfinished row, with its
   `Run: <model> / <effort>` hint beside it, since both are chosen when that chat
   opens and reading them afterwards is too late.
-- **The launch command appears once, under the strip, as text**: `/wf:execute-phase`.
+- **The launch command appears once, under the strip, as text**: `/execute-phase`.
   It takes no argument — the phase comes from the plan and the chat titles itself.
 
 ## Why nothing is clickable

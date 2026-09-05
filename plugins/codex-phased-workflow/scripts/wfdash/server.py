@@ -192,7 +192,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def queue_state(self):
         events = outbox.read(self.board.repo)
-        mine = [event for event in events if event.get("owner") == Handler.owner]
+        mine = [event for event in events if Handler.owner and event.get("owner") == Handler.owner]
         unowned = [event for event in events if not event.get("owner")]
         return {"mine": mine, "unowned": unowned, "other_count": len(events) - len(mine) - len(unowned)}
 
